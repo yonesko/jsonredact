@@ -7,59 +7,104 @@ import (
 )
 
 type Redactor struct {
-	keys    map[string]bool
-	handler func(string) string
+	selectorForest selectorForest
+	handler        func(string) string
 }
 
-type state struct {
-	json    string
-	path    []string
-	keys    map[string]bool
-	handler func(string) string
-	index   int
+/*
+age
+name.first
+a.*.name
+children.#.name
+children.#
+children.1
+children.1.name
+*/
+func NewRedactor(keySelectors []string, handler func(string) string) Redactor {
+	return Redactor{handler: handler, selectorForest: parseSelector(keySelectors)}
 }
 
-func Redact(json string, keys []string, handler func(string) string) string {
-	keysMap := make(map[string]bool)
-	for _, k := range keys {
-		keysMap[k] = true
-	}
-	return Redactor{keys: keysMap, handler: handler}.Redact(json)
+func Redact(json string, keySelectors []string, handler func(string) string) string {
+	return Redactor{selectorForest: parseSelector(keySelectors), handler: handler}.Redact(json)
 }
 
 func (r Redactor) Redact(json string) string {
-	return (&state{json: json, keys: r.keys, handler: r.handler}).redact()
+	if len(r.selectorForest) == 0 {
+		return json
+	}
+	return (&state{json: json, selectorForest: r.selectorForest, handler: r.handler}).redact()
+}
+
+type selectorForest map[string]selectorForest
+
+// TODO dot and other control symbols escape
+func (f selectorForest) add(str string) {
+	var fi = f
+	for _, val := range strings.Split(str, ".") {
+		_, ok := fi[val]
+		if !ok {
+			fi[val] = map[string]selectorForest{}
+		}
+		fi = fi[val]
+	}
+}
+
+func parseSelector(keySelectors []string) selectorForest {
+	f := selectorForest{}
+	for _, k := range keySelectors {
+		f.add(k)
+	}
+	return f
+}
+
+type state struct {
+	json           string
+	selectorForest selectorForest
+	handler        func(string) string
+	index          int
+}
+
+func (s *state) selectForest(key gjson.Result) selectorForest {
+	f, ok := s.selectorForest[key.String()]
+	if ok {
+		return f
+	}
+	f, ok = s.selectorForest["#"]
+	return f
 }
 
 func (s *state) redact() string {
 	buffer := bytes.NewBuffer(make([]byte, 0, len(s.json)))
-	parsed := gjson.Parse(s.json)
-	if parsed.IsArray() {
+	root := gjson.Parse(s.json)
+	if root.IsArray() {
 		_ = buffer.WriteByte('[')
 	} else {
 		_ = buffer.WriteByte('{')
 	}
-	parsed.ForEach(func(key, value gjson.Result) bool {
+	root.ForEach(func(key, value gjson.Result) bool {
 		if s.index != 0 {
 			_ = buffer.WriteByte(',')
 		}
 		s.index++
-		path := append(s.path, strings.ReplaceAll(key.String(), `.`, `\.`))
-		pathStr := strings.Join(path, ".")
 		_, _ = buffer.WriteString(key.Raw)
-		if !parsed.IsArray() {
+		if !root.IsArray() {
 			_ = buffer.WriteByte(':')
 		}
-		if s.keys[pathStr] {
-			_, _ = buffer.WriteString(s.handler(value.Raw))
-		} else if value.Type == gjson.JSON {
-			_, _ = buffer.WriteString((&state{json: value.Raw, path: path, keys: s.keys, handler: s.handler}).redact())
-		} else {
+		if forest := s.selectForest(key); forest == nil {
 			_, _ = buffer.WriteString(value.Raw)
+		} else if len(forest) != 0 {
+			if value.IsObject() || value.IsArray() {
+				redactedValue := (&state{json: value.Raw, selectorForest: forest, handler: s.handler}).redact()
+				_, _ = buffer.WriteString(redactedValue)
+			} else {
+				_, _ = buffer.WriteString(value.Raw)
+			}
+		} else {
+			_, _ = buffer.WriteString(s.handler(value.Raw))
 		}
 		return true
 	})
-	if parsed.IsArray() {
+	if root.IsArray() {
 		_ = buffer.WriteByte(']')
 	} else {
 		_ = buffer.WriteByte('}')
