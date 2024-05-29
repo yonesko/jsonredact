@@ -67,14 +67,14 @@ func TestRedact(t *testing.T) {
 		{
 			name: "certain field of all array elements",
 			args: args{json: `{ "children": [ {"name":"Sara"}, "Alex", "Jack", [[{"name":"Greg"}]],{},7 ] }`,
-				keys: []string{`children.#.name`, `children.0.name`}},
-			want: `{ "children": [ {"name":"REDACTED"}, "Alex", "Jack", [[{"name":"Greg"}]],{},7 ] }`,
+				keys: []string{`children.#.name`, `children.0.name`, `children.3.0.0.name`}},
+			want: `{ "children": [ {"name":"REDACTED"}, "Alex", "Jack", [[{"name":"REDACTED"}]],{},7 ] }`,
 		},
 		{
 			name: "certain field of certain array element",
-			args: args{json: `{ "children": [ {"name":"Sara"}, "Alex", "Jack" ] }`,
+			args: args{json: `{ "children": [ {"name":"Sara", "null":null}, "Alex", "Jack",null ] }`,
 				keys: []string{`children.0.name`, `children.2.name`}},
-			want: `{ "children": [ {"name":"REDACTED"}, "Alex", "Jack" ] }`,
+			want: `{ "children": [ {"name":"REDACTED", "null":null}, "Alex", "Jack",null ] }`,
 		},
 		{
 			name: "all fields",
