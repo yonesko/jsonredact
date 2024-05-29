@@ -21,7 +21,7 @@ func NewRedactor(keySelectors []string, handler func(string) string) Redactor {
 }
 
 func Redact(json string, keySelectors []string, handler func(string) string) string {
-	return Redactor{selectorForest: parseSelector(keySelectors), handler: handler}.Redact(json)
+	return NewRedactor(keySelectors, handler).Redact(json)
 }
 
 func (r Redactor) Redact(json string) string {
