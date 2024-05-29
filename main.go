@@ -12,13 +12,9 @@ type Redactor struct {
 }
 
 /*
-age
-name.first
-a.*.name
-children.#.name
-children.#
-children.1
-children.1.name
+User '.' as separator of objects and arrays
+Use '#' as wildcard for any key or array index
+Use '*' to apply right expression to all object tree
 */
 func NewRedactor(keySelectors []string, handler func(string) string) Redactor {
 	return Redactor{handler: handler, selectorForest: parseSelector(keySelectors)}
@@ -70,6 +66,14 @@ func (s *state) selectForest(key gjson.Result) selectorForest {
 		return f
 	}
 	f, ok = s.selectorForest["#"]
+	if ok {
+		return f
+	}
+	f, ok = s.selectorForest["*"]
+	if ok {
+		f["*"] = f
+		return f
+	}
 	return f
 }
 
