@@ -28,16 +28,31 @@ func (r Redactor) Redact(json string) string {
 	if len(r.selectorForest) == 0 {
 		return json
 	}
+	if !isContainsFields(json, r.selectorForest) {
+		return json
+	}
 	s := state{json: json, selectorForest: r.selectorForest, handler: r.handler, buf: bytes.NewBuffer(make([]byte, 0, len(json)))}
 	s.redact()
 	return s.buf.String()
 }
 
+func isContainsFields(json string, forest selectorForest) bool {
+	containsFields := false
+	gjson.Parse(json).ForEach(func(key, value gjson.Result) bool {
+		if forest.selectForest(key) != nil {
+			containsFields = true
+			return false
+		}
+		return true
+	})
+	return containsFields
+}
+
 type selectorForest map[string]selectorForest
 
 // TODO dot and other control symbols escape
-func (f selectorForest) add(str string) {
-	var fi = f
+func (forest selectorForest) add(str string) {
+	var fi = forest
 	for _, val := range strings.Split(str, ".") {
 		_, ok := fi[val]
 		if !ok {
@@ -63,16 +78,16 @@ type state struct {
 	buf            *bytes.Buffer
 }
 
-func (s *state) selectForest(key gjson.Result) selectorForest {
-	f, ok := s.selectorForest[key.String()]
+func (forest selectorForest) selectForest(key gjson.Result) selectorForest {
+	f, ok := forest[key.String()]
 	if ok {
 		return f
 	}
-	f, ok = s.selectorForest["#"]
+	f, ok = forest["#"]
 	if ok {
 		return f
 	}
-	f, ok = s.selectorForest["*"]
+	f, ok = forest["*"]
 	if ok {
 		f["*"] = f
 		return f
@@ -81,22 +96,22 @@ func (s *state) selectForest(key gjson.Result) selectorForest {
 }
 
 func (s *state) redact() {
-	root := gjson.Parse(s.json)
-	if root.IsArray() {
+	parent := gjson.Parse(s.json)
+	if parent.IsArray() {
 		_ = s.buf.WriteByte('[')
 	} else {
 		_ = s.buf.WriteByte('{')
 	}
-	root.ForEach(func(key, value gjson.Result) bool {
+	parent.ForEach(func(key, value gjson.Result) bool {
 		if s.index != 0 {
 			_ = s.buf.WriteByte(',')
 		}
 		s.index++
 		_, _ = s.buf.WriteString(key.Raw)
-		if !root.IsArray() {
+		if !parent.IsArray() {
 			_ = s.buf.WriteByte(':')
 		}
-		if forest := s.selectForest(key); forest == nil {
+		if forest := s.selectorForest.selectForest(key); forest == nil {
 			_, _ = s.buf.WriteString(value.Raw)
 		} else if len(forest) != 0 {
 			if value.IsObject() || value.IsArray() {
@@ -109,7 +124,7 @@ func (s *state) redact() {
 		}
 		return true
 	})
-	if root.IsArray() {
+	if parent.IsArray() {
 		_ = s.buf.WriteByte(']')
 	} else {
 		_ = s.buf.WriteByte('}')
