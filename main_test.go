@@ -112,6 +112,11 @@ func TestRedact(t *testing.T) {
 		 "name": { "first": "Tom", "last": "REDACTED" }
 		}`,
 		},
+		{
+			name: "without matched keys",
+			args: args{json: bigJson, keys: []string{"1age", "1fav.movie", "1friends", "1name.last"}},
+			want: bigJson,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprint(tt.name), func(t *testing.T) {
@@ -124,11 +129,18 @@ func TestRedact(t *testing.T) {
 goos: darwin
 goarch: arm64
 pkg: jsonredact
-Benchmark
-Benchmark-10    	  698648	      1606 ns/op
+Benchmark/with_matched_keys-10         	  663984	      1557 ns/op
+Benchmark/without_matched_keys-10      	  877837	      1099 ns/op
 */
 func Benchmark(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		Redact(bigJson, []string{"age", "fav.movie", "friends", "name.last"}, func(s string) string { return `"REDACTED"` })
-	}
+	b.Run("with matched keys", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			Redact(bigJson, []string{"age", "fav.movie", "friends", "name.last"}, func(s string) string { return `"REDACTED"` })
+		}
+	})
+	b.Run("without matched keys", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			Redact(bigJson, []string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `"REDACTED"` })
+		}
+	})
 }
