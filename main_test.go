@@ -45,13 +45,13 @@ func TestRedact(t *testing.T) {
 				keys: []string{"fav.movie"}},
 			want: `{ "fav.movie": { "title": "Deer Hunter" }, "fav": { "movie": "REDACTED" } }`,
 		},
-		//		{
-		//			name: "do not count escaped point",
-		//			args: args{json: `{ "fav.movie": { "title": "Deer Hunter" }, "fav": { "movie": "BIG" } }`,
-		//				keys:    []string{`fav\.movie`},
-		//				handler: handler},
-		//			want: `{ "fav.movie": "REDACTED", "fav": { "movie": "BIG" } }`,
-		//		},
+		{
+			name: "fields with strange names",
+			args: args{json: `{".":1, ".po.int.":2, "\"":3,"*":4, "..":5, "a*":7, "\\\\":8, "#":[{"0":{"#":11}}]}`,
+				keys: []string{`\.`, `\.po\.int\.`, `\\"`, `\*`, `\#.0.0.\#`, `a*`}},
+			want: `{".":"REDACTED", ".po.int.":"REDACTED", "\"":"REDACTED","*":"REDACTED","..":5,
+				"a*":"REDACTED", "\\\\":8, "#":[{"0":{"#":"REDACTED"}}]}`,
+		},
 		{
 			name: "array with index",
 			args: args{json: `{ "children": [ "Sara", "Alex", "Jack" ] }`,
@@ -90,9 +90,9 @@ func TestRedact(t *testing.T) {
 		},
 		{
 			name: "certain field of all fields and subfields",
-			args: args{json: `{ "a": {"b":{"name":"d"}, "name":"b" }}`,
+			args: args{json: `{ "a": {"b":{"name":"d","f":5}, "name":"b" }}`,
 				keys: []string{`*.name`}},
-			want: `{ "a": {"b":{"name":"REDACTED"}, "name":"REDACTED" }}`,
+			want: `{ "a": {"b":{"name":"REDACTED","f":5}, "name":"REDACTED" }}`,
 		},
 		{
 			name: "certain field of all fields and subfields of a certain object",
