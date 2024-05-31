@@ -2,7 +2,6 @@ package jsonredact
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/tidwall/gjson"
 	"strings"
 )
@@ -114,7 +113,6 @@ func parseSelector(keySelectors []string) selectorForest {
 	for _, k := range keySelectors {
 		f.add(k)
 	}
-	fmt.Println(f)
 	return f
 }
 
