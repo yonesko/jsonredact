@@ -2,6 +2,7 @@ package jsonredact
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/tidwall/gjson"
 	"strings"
 )
@@ -12,9 +13,10 @@ type Redactor struct {
 }
 
 /*
-User '.' as separator of objects and arrays
-Use '#' as wildcard for any key or array index
-Use '*' to apply right expression to all object tree
+User '.' as separator of objects and arrays.
+Use '#' as wildcard for any key or array index.
+Use '*' to apply right expression to all object keys recursively.
+User '\' to escape control symbols above.
 */
 func NewRedactor(keySelectors []string, handler func(string) string) Redactor {
 	return Redactor{handler: handler, selectorForest: parseSelector(keySelectors)}
@@ -50,10 +52,25 @@ func isContainsFields(json string, forest selectorForest) bool {
 
 type selectorForest map[string]selectorForest
 
-// TODO dot and other control symbols escape
+func (forest selectorForest) String() string {
+	return forest.string("")
+}
+
+func (forest selectorForest) string(prefix string) string {
+	buffer := bytes.Buffer{}
+	for k, v := range forest {
+		if len(v) > 0 {
+			buffer.WriteString(v.string(prefix + k + `->`))
+		} else {
+			buffer.WriteString(prefix + k + "\n")
+		}
+	}
+	return buffer.String()
+}
+
 func (forest selectorForest) add(str string) {
 	var fi = forest
-	for _, val := range strings.Split(str, ".") {
+	for _, val := range parse(str) {
 		_, ok := fi[val]
 		if !ok {
 			fi[val] = map[string]selectorForest{}
@@ -62,11 +79,42 @@ func (forest selectorForest) add(str string) {
 	}
 }
 
+// parse selector expression (field1.fie\.ld2) to elements [field1,fie.ld2]
+func parse(s string) []string {
+	var elems []string
+	builder := strings.Builder{}
+	wasEscape := false
+	for _, c := range []rune(s) {
+		switch c {
+		case '#', '*':
+			if wasEscape {
+				wasEscape = false
+				_, _ = builder.WriteString(`\`)
+			}
+			_, _ = builder.WriteRune(c)
+		case '\\':
+			wasEscape = true
+		case '.':
+			if wasEscape {
+				_, _ = builder.WriteRune(c)
+				wasEscape = false
+			} else {
+				elems = append(elems, builder.String())
+				builder.Reset()
+			}
+		default:
+			_, _ = builder.WriteRune(c)
+		}
+	}
+	return append(elems, builder.String())
+}
+
 func parseSelector(keySelectors []string) selectorForest {
 	f := selectorForest{}
 	for _, k := range keySelectors {
 		f.add(k)
 	}
+	fmt.Println(f)
 	return f
 }
 
@@ -80,6 +128,10 @@ type state struct {
 
 func (forest selectorForest) selectForest(key gjson.Result) selectorForest {
 	f, ok := forest[key.String()]
+	if ok {
+		return f
+	}
+	f, ok = forest[`\`+key.String()]
 	if ok {
 		return f
 	}
