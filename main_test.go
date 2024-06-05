@@ -27,7 +27,7 @@ func TestRedact(t *testing.T) {
 		keys []string
 	}
 	handler := func(s string) string {
-		return `"REDACTED"`
+		return `REDACTED`
 	}
 	tests := []struct {
 		name string
@@ -135,12 +135,12 @@ Benchmark/without_matched_keys-10      	  877837	      1099 ns/op
 func Benchmark(b *testing.B) {
 	b.Run("with matched keys", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			Redact(bigJson, []string{"age", "fav.movie", "friends", "name.last"}, func(s string) string { return `"REDACTED"` })
+			Redact(bigJson, []string{"age", "fav.movie", "friends", "name.last"}, func(s string) string { return `REDACTED` })
 		}
 	})
 	b.Run("without matched keys", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			Redact(bigJson, []string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `"REDACTED"` })
+			Redact(bigJson, []string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `REDACTED` })
 		}
 	})
 }

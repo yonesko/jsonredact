@@ -170,7 +170,10 @@ func (s *state) redact() {
 				_, _ = s.buf.WriteString(value.Raw)
 			}
 		} else {
-			_, _ = s.buf.WriteString(s.handler(value.Raw))
+			str := s.handler(value.Raw)
+			_ = s.buf.WriteByte('"')
+			_, _ = s.buf.WriteString(str)
+			_ = s.buf.WriteByte('"')
 		}
 		return true
 	})
