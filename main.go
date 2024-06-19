@@ -2,6 +2,7 @@ package jsonredact
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/tidwall/gjson"
 	"strings"
 )
@@ -26,13 +27,15 @@ func Redact(json string, keySelectors []string, handler func(string) string) str
 }
 
 func (r Redactor) Redact(json string) string {
-	if len(r.selectorForest) == 0 {
+	f := r.selectorForest.Clone()
+	fmt.Println(f.String())
+	if len(f) == 0 {
 		return json
 	}
-	if !isContainsFields(json, r.selectorForest) {
+	if !isContainsFields(json, f) {
 		return json
 	}
-	s := state{json: json, selectorForest: r.selectorForest, handler: r.handler, buf: bytes.NewBuffer(make([]byte, 0, len(json)))}
+	s := state{json: json, selectorForest: f, handler: r.handler, buf: bytes.NewBuffer(make([]byte, 0, len(json)))}
 	s.redact()
 	return s.buf.String()
 }
@@ -49,37 +52,8 @@ func isContainsFields(json string, forest selectorForest) bool {
 	return containsFields
 }
 
-type selectorForest map[string]selectorForest
-
-func (forest selectorForest) String() string {
-	return forest.string("")
-}
-
-func (forest selectorForest) string(prefix string) string {
-	buffer := bytes.Buffer{}
-	for k, v := range forest {
-		if len(v) > 0 {
-			buffer.WriteString(v.string(prefix + k + `->`))
-		} else {
-			buffer.WriteString(prefix + k + "\n")
-		}
-	}
-	return buffer.String()
-}
-
-func (forest selectorForest) add(str string) {
-	var fi = forest
-	for _, val := range parse(str) {
-		_, ok := fi[val]
-		if !ok {
-			fi[val] = map[string]selectorForest{}
-		}
-		fi = fi[val]
-	}
-}
-
-// parse selector expression (field1.fie\.ld2) to elements [field1,fie.ld2]
-func parse(s string) []string {
+// splitSelectorExpression splits selector expression (field1.fie\.ld2) to elements [field1,fie.ld2]
+func splitSelectorExpression(s string) []string {
 	var elems []string
 	builder := strings.Builder{}
 	wasEscape := false
@@ -88,11 +62,18 @@ func parse(s string) []string {
 		case '#', '*':
 			if wasEscape {
 				wasEscape = false
-				_, _ = builder.WriteString(`\`)
+				if len(s) == 2 { //just \*
+					_, _ = builder.WriteString(`\`)
+				}
 			}
 			_, _ = builder.WriteRune(c)
 		case '\\':
-			wasEscape = true
+			if wasEscape {
+				wasEscape = false
+				_, _ = builder.WriteString(`\`)
+			} else {
+				wasEscape = true
+			}
 		case '.':
 			if wasEscape {
 				_, _ = builder.WriteRune(c)
@@ -109,11 +90,13 @@ func parse(s string) []string {
 }
 
 func parseSelector(keySelectors []string) selectorForest {
-	f := selectorForest{}
+	result := selectorForest{}
 	for _, k := range keySelectors {
+		f := selectorForest{}
 		f.add(k)
+		result.mergeWith(f)
 	}
-	return f
+	return result
 }
 
 type state struct {
@@ -122,27 +105,6 @@ type state struct {
 	handler        func(string) string
 	index          int
 	buf            *bytes.Buffer
-}
-
-func (forest selectorForest) selectForest(key gjson.Result) selectorForest {
-	f, ok := forest[key.String()]
-	if ok {
-		return f
-	}
-	f, ok = forest[`\`+key.String()]
-	if ok {
-		return f
-	}
-	f, ok = forest["#"]
-	if ok {
-		return f
-	}
-	f, ok = forest["*"]
-	if ok {
-		f["*"] = f
-		return f
-	}
-	return f
 }
 
 func (s *state) redact() {
