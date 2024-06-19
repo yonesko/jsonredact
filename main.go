@@ -26,30 +26,30 @@ func Redact(json string, keySelectors []string, handler func(string) string) str
 }
 
 func (r Redactor) Redact(json string) string {
-	f := r.selectorForest.Clone()
+	f := r.selectorForest
 	//fmt.Println(f.String())
 	if len(f) == 0 {
 		return json
 	}
-	if !isContainsFields(json, f) {
-		return json
-	}
+	//if !isContainsFields(json, f) {
+	//	return json
+	//}
 	s := state{json: json, selectorForest: f, handler: r.handler, buf: bytes.NewBuffer(make([]byte, 0, len(json)))}
 	s.redact()
 	return s.buf.String()
 }
 
-func isContainsFields(json string, forest selectorForest) bool {
-	containsFields := false
-	gjson.Parse(json).ForEach(func(key, value gjson.Result) bool {
-		if forest.selectForest(key) != nil {
-			containsFields = true
-			return false
-		}
-		return true
-	})
-	return containsFields
-}
+//func isContainsFields(json string, forest selectorForest) bool {
+//	containsFields := false
+//	gjson.Parse(json).ForEach(func(key, value gjson.Result) bool {
+//		if forest.selectForest(key) != nil {
+//			containsFields = true
+//			return false
+//		}
+//		return true
+//	})
+//	return containsFields
+//}
 
 // splitSelectorExpression splits selector expression (field1.fie\.ld2) to elements [field1,fie.ld2]
 func splitSelectorExpression(s string) []string {
