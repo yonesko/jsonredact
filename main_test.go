@@ -168,7 +168,7 @@ func TestRedact(t *testing.T) {
 		},
 
 		{
-			name: "certain field of all fields and subfields of a certain object",
+			name: "recursive/certain field of all fields and subfields of a certain object",
 			args: args{json: `{"a":{"b":{"name":"d","c":{"a":{"b":[[{"name":"d"},[{"name":"d"}]]],"name":"b"}}}},"name":"b"}`,
 				keys: []string{`a.*.name`}},
 			want: `{"a":{"b":{"name":"REDACTED","c":{"a":{"b":[[{"name":"REDACTED"},[{"name":"REDACTED"}]]],"name":"REDACTED"}}}},"name":"b"}`,
@@ -206,6 +206,7 @@ func TestRedact(t *testing.T) {
 			assert.JSONEq(t, tt.want, Redact(tt.args.json, tt.args.keys, handler))
 		})
 	}
+	//TODO *.a.c    a
 }
 
 func TestConcurrent(t *testing.T) {

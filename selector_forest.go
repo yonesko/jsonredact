@@ -20,11 +20,6 @@ func (forest selectorForest) selectForest(key gjson.Result) selectorForest {
 	if ok {
 		return f
 	}
-	f, ok = forest["*"]
-	if ok {
-		f["*"] = f
-		return f
-	}
 	return f
 }
 
@@ -48,11 +43,17 @@ func (forest selectorForest) hasChildren() bool {
 
 func (forest selectorForest) add(str string) {
 	var fi = forest
-	for _, val := range splitSelectorExpression(str) {
-		if fi[val] == nil {
-			fi[val] = map[string]selectorForest{}
+	elems := splitSelectorExpression(str)
+	for i := 0; i < len(elems); i++ {
+		if elems[i] == "*" {
+			fi[elems[i+1]] = map[string]selectorForest{}
+			fi["#"] = fi
+			continue
 		}
-		fi = fi[val]
+		if fi[elems[i]] == nil {
+			fi[elems[i]] = map[string]selectorForest{}
+		}
+		fi = fi[elems[i]]
 	}
 }
 
