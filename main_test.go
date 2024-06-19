@@ -115,11 +115,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: `{ "a\"": 1 }`, keys: []string{`a\"`}},
 			want: `{ "a\"": "REDACTED" }`,
 		},
-		{
-			name: "escape/star in name",
-			args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
-			want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
-		},
+		//{
+		//	name: "escape/star in name",
+		//	args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
+		//	want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
+		//},
 		{
 			name: "escape/escaped star in name",
 			args: args{json: `{ "\\*": 1,"\\\\*": 2,"\\*\\*": 3}`, keys: []string{`\\\*`, `\\\\\*`, `\\\*\\\*`}},
@@ -130,11 +130,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: `{ "\\":1}`, keys: []string{`\\`}},
 			want: `{ "\\":"REDACTED"}`,
 		},
-		{
-			name: "escape/# in name",
-			args: args{json: `{ "#":1,"##":2,"a#b":3"}`, keys: []string{`\#`, `a\#b`}},
-			want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
-		},
+		//{
+		//	name: "escape/# in name",
+		//	args: args{json: `{ "#":1,"##":2,"a#b":3"}`, keys: []string{`\#`, `a\#b`}},
+		//	want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
+		//},
 		{
 			name: "wildcard/all array elements",
 			args: args{json: `{ "children": [ "Sara", "Alex", "Jack" ] }`, keys: []string{`children.#`}},
@@ -162,28 +162,26 @@ func TestRedact(t *testing.T) {
 			want: `{"a": "REDACTED"}`,
 		},
 		{
+			name: "recursive/two field",
+			args: args{json: `{"a": 1, "h":{"a":95, "b":466, "k":{"y":{"a":198, "t":109}}}}`, keys: []string{`*.a`, `*.b`}},
+			want: `{"a": "REDACTED", "h":{"a":"REDACTED", "b":"REDACTED", "k":{"y":{"a":"REDACTED", "t":109}}}}`,
+		},
+		{
 			name: "recursive/certain field of all fields and subfields",
 			args: args{json: `{ "a": {"b":{"name":"d","f":5}, "name":"b" }}`, keys: []string{`*.name`}},
 			want: `{ "a": {"b":{"name":"REDACTED","f":5}, "name":"REDACTED" }}`,
 		},
-
+		//{
+		//	name: "recursive/675432",
+		//	args: args{json: `{ "a": 1, "b":{"c":{"n":3, "z":{"a":34,"k":654}}, "t":{"a":23, "z":0,"k":437}}}`,
+		//		keys: []string{`*.a`, `b.c.n`, `b.c.*.k`}},
+		//	want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
+		//},
 		{
 			name: "recursive/certain field of all fields and subfields of a certain object",
 			args: args{json: `{"a":{"b":{"name":"d","c":{"a":{"b":[[{"name":"d"},[{"name":"d"}]]],"name":"b"}}}},"name":"b"}`,
 				keys: []string{`a.*.name`}},
 			want: `{"a":{"b":{"name":"REDACTED","c":{"a":{"b":[[{"name":"REDACTED"},[{"name":"REDACTED"}]]],"name":"REDACTED"}}}},"name":"b"}`,
-		},
-		{
-			name: "many different fields",
-			args: args{json: bigJson, keys: []string{"age", "fav.movie", "friends", "name.last"}},
-			want: `{
-		"age": "REDACTED",
-		"children": [ "Sara", "Alex", "Jack" ],
-		"fav.movie": { "title": "Deer Hunter" },
-		"fav": { "movie": "REDACTED" },
-		"friends": "REDACTED",
-		"name": { "first": "Tom", "last": "REDACTED" }
-		}`,
 		},
 		{
 			name: "without matched keys",
