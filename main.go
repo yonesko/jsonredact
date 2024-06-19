@@ -2,7 +2,6 @@ package jsonredact
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/tidwall/gjson"
 	"strings"
 )
@@ -28,7 +27,7 @@ func Redact(json string, keySelectors []string, handler func(string) string) str
 
 func (r Redactor) Redact(json string) string {
 	f := r.selectorForest.Clone()
-	fmt.Println(f.String())
+	//fmt.Println(f.String())
 	if len(f) == 0 {
 		return json
 	}
@@ -108,19 +107,19 @@ type state struct {
 }
 
 func (s *state) redact() {
-	parent := gjson.Parse(s.json)
-	if parent.IsArray() {
+	root := gjson.Parse(s.json)
+	if root.IsArray() {
 		_ = s.buf.WriteByte('[')
 	} else {
 		_ = s.buf.WriteByte('{')
 	}
-	parent.ForEach(func(key, value gjson.Result) bool {
+	root.ForEach(func(key, value gjson.Result) bool {
 		if s.index != 0 {
 			_ = s.buf.WriteByte(',')
 		}
 		s.index++
 		_, _ = s.buf.WriteString(key.Raw)
-		if !parent.IsArray() {
+		if !root.IsArray() {
 			_ = s.buf.WriteByte(':')
 		}
 		if forest := s.selectorForest.selectForest(key); forest == nil {
@@ -139,7 +138,7 @@ func (s *state) redact() {
 		}
 		return true
 	})
-	if parent.IsArray() {
+	if root.IsArray() {
 		_ = s.buf.WriteByte(']')
 	} else {
 		_ = s.buf.WriteByte('}')
