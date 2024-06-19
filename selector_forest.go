@@ -2,37 +2,41 @@ package jsonredact
 
 import (
 	"bytes"
-	"github.com/tidwall/gjson"
+	"reflect"
 )
 
 type selectorForest map[string]selectorForest
 
-func (forest selectorForest) selectForest(key gjson.Result) selectorForest {
-	f, ok := forest[key.String()]
-	if ok {
-		return f
-	}
-	f, ok = forest[`\`+key.String()]
-	if ok {
-		return f
-	}
-	f, ok = forest["#"]
-	if ok {
-		return f
-	}
-	return f
-}
+//func (forest selectorForest) selectForest(key gjson.Result) selectorForest {
+//	f, ok := forest[key.String()]
+//	if ok {
+//		return f
+//	}
+//	f, ok = forest[`\`+key.String()]
+//	if ok {
+//		return f
+//	}
+//	f, ok = forest["#"]
+//	if ok {
+//		return f
+//	}
+//	return f
+//}
 
 func (forest selectorForest) mergeWith(other selectorForest) {
-	for k, v := range other {
+	for k := range other {
 		if forest[k] == nil {
-			forest[k] = v
+			forest[k] = other[k]
 		} else if !forest[k].hasChildren() {
 			continue
 		} else if !other[k].hasChildren() {
 			clear(forest[k])
 		} else {
-			forest[k].mergeWith(v)
+			if reflect.ValueOf(forest).Pointer() == reflect.ValueOf(forest[k]).Pointer() &&
+				reflect.ValueOf(other).Pointer() == reflect.ValueOf(other[k]).Pointer() {
+				continue
+			}
+			forest[k].mergeWith(other[k])
 		}
 	}
 }

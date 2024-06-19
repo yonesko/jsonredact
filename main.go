@@ -114,6 +114,7 @@ func (s *state) redact() {
 		_ = s.buf.WriteByte('{')
 	}
 	root.ForEach(func(key, value gjson.Result) bool {
+		keyStr := key.String()
 		if s.index != 0 {
 			_ = s.buf.WriteByte(',')
 		}
@@ -122,20 +123,22 @@ func (s *state) redact() {
 		if !root.IsArray() {
 			_ = s.buf.WriteByte(':')
 		}
-		if forest := s.selectorForest.selectForest(key); forest == nil {
-			_, _ = s.buf.WriteString(value.Raw)
-		} else if len(forest) != 0 {
-			if value.IsObject() || value.IsArray() {
-				(&state{json: value.Raw, selectorForest: forest, handler: s.handler, buf: s.buf}).redact()
-			} else {
-				_, _ = s.buf.WriteString(value.Raw)
-			}
-		} else {
-			str := s.handler(value.Raw)
+
+		if (s.selectorForest[keyStr] != nil && len(s.selectorForest[keyStr]) == 0) ||
+			(s.selectorForest["#"] != nil && len(s.selectorForest["#"]) == 0) {
 			_ = s.buf.WriteByte('"')
-			_, _ = s.buf.WriteString(str)
+			_, _ = s.buf.WriteString(s.handler(value.Raw))
 			_ = s.buf.WriteByte('"')
+			return true
 		}
+		if s.selectorForest[keyStr] == nil && s.selectorForest["#"] == nil || (!value.IsObject() && !value.IsArray()) {
+			_, _ = s.buf.WriteString(value.Raw)
+			return true
+		}
+		f := selectorForest{}
+		f.mergeWith(s.selectorForest[keyStr])
+		f.mergeWith(s.selectorForest["#"])
+		(&state{json: value.Raw, selectorForest: f, handler: s.handler, buf: s.buf}).redact()
 		return true
 	})
 	if root.IsArray() {
