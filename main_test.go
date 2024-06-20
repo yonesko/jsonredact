@@ -177,6 +177,11 @@ func TestRedact(t *testing.T) {
 			want: `{"a": "REDACTED"}`,
 		},
 		{
+			name: "recursive/several stars",
+			args: args{json: `{"a": 1, "x":{"b":263, "a":{"b":297, "a":{"x":{"a":{"b":491}}}}}}`, keys: []string{`*.a.*.b`}},
+			want: `{"a": 1, "x":{"b":263, "a":{"b":"REDACTED", "a":{"x":{"a":{"b":"REDACTED"}}}}}}`,
+		},
+		{
 			name: "recursive/two field",
 			args: args{json: `{"a": 1, "h":{"a":95, "b":466, "k":{"y":{"a":198, "t":109}}}}`, keys: []string{`*.a`, `*.b`}},
 			want: `{"a": "REDACTED", "h":{"a":"REDACTED", "b":"REDACTED", "k":{"y":{"a":"REDACTED", "t":109}}}}`,
