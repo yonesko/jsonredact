@@ -52,6 +52,29 @@ func Test_newDFA(t *testing.T) {
 			accepted:    []string{"a", "ab", "axy", "x"},
 			notAccepted: []string{"c", "fx", "b"},
 		},
+		{
+			name:        "wildcard/all fields",
+			expressions: []string{"#", "#"},
+			accepted:    []string{"a", "ab", "axy", "x"},
+		},
+		{
+			name:        "wildcard/all fields of an object",
+			expressions: []string{"a.#"},
+			accepted:    []string{"ab", "axy"},
+			notAccepted: []string{"a", "x"},
+		},
+		{
+			name:        "wildcard/one field of all objects",
+			expressions: []string{"#.a"},
+			accepted:    []string{"aa", "fa", "ya", "aaa"},
+			notAccepted: []string{"a", "x", "g"},
+		},
+		{
+			name:        "wildcard/do not override general by particular",
+			expressions: []string{"a.#", "a"},
+			accepted:    []string{"a", "ab", "axy"},
+			notAccepted: []string{"c", "fx", "b"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

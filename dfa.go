@@ -14,7 +14,11 @@ func newDFA(expressions ...string) dfa {
 }
 
 func (a dfa) next(input string) dfa {
-	return a[input]
+	automata := a[input]
+	if automata != nil {
+		return automata
+	}
+	return a["#"]
 }
 
 func (a dfa) isInTerminalState() bool {
