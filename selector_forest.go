@@ -37,7 +37,7 @@ func (forest selectorForest) isTerminalMatch(key string) bool {
 
 func (forest selectorForest) add(str string) {
 	var fi = forest
-	elems := splitSelectorExpression(str)
+	elems := []string{}
 	for i := 0; i < len(elems); i++ {
 		if elems[i] == "*" {
 			fi[elems[i+1]] = map[string]selectorForest{}
