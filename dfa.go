@@ -29,8 +29,8 @@ func merge(left, right dfa) dfa {
 	automata := dfa{}
 	for _, a := range []dfa{left, right} {
 		for k := range a {
-			r := right[k]
-			l := left[k]
+			r := right.next(k)
+			l := left.next(k)
 			if r.isInTerminalState() {
 				automata[k] = r
 				continue
