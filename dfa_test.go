@@ -8,34 +8,46 @@ import (
 func Test_newDFA(t *testing.T) {
 	type testCase struct {
 		input string
-		want  bool
 	}
 	tests := []struct {
 		name        string
 		expressions []string
-		testCases   []testCase
+		accepted    []string
+		notAccepted []string
 	}{
 		{
-			name:        "base/single",
+			name:        "base/single one sized",
 			expressions: []string{"a"},
-			testCases: []testCase{
-				{input: "ab", want: true}, {input: "a", want: true}, {input: "aa", want: true}, {input: "b"},
-				{input: "bb"}, {input: "ba"},
-			},
+			accepted:    []string{"ab", "a", "aa"},
+			notAccepted: []string{"b", "bb", "ba"},
 		},
 		{
-			name:        "base/3",
+			name:        "base/single of 3",
 			expressions: []string{"a.b.c"},
-			testCases: []testCase{
-				{input: "abc", want: true}, {input: "abcc", want: true}, {input: "b"}, {input: "bb"}, {input: "ab"},
-			},
+			accepted:    []string{"abc", "abcccc", "abcc"},
+			notAccepted: []string{"b", "bb", "ab"},
+		},
+		{
+			name:        "base/several one sized",
+			expressions: []string{"a", "b"},
+			accepted:    []string{"a", "b", "aaaa", "bbbb", "ab", "ba"},
+			notAccepted: []string{"x", "c"},
+		},
+		{
+			name:        "base/several different sizes",
+			expressions: []string{"a", "b.a", "c.g.d"},
+			accepted:    []string{"a", "ba", "cgd"},
+			notAccepted: []string{"b", "cg"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := newDFA(tt.expressions...)
-			for _, c := range tt.testCases {
-				require.Equal(t, c.want, accepts(a, c.input), "dfa=%s input=%s", tt.expressions, c.input)
+			for _, input := range tt.accepted {
+				require.True(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
+			}
+			for _, input := range tt.notAccepted {
+				require.False(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
 			}
 		})
 	}
