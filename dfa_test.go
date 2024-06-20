@@ -36,8 +36,14 @@ func Test_newDFA(t *testing.T) {
 		{
 			name:        "base/several different sizes",
 			expressions: []string{"a", "b.a", "c.g.d"},
-			accepted:    []string{"a", "ba", "cgd"},
-			notAccepted: []string{"b", "cg"},
+			accepted:    []string{"a", "ba", "cgd", "cgddd"},
+			notAccepted: []string{"b", "cg", "gddd"},
+		},
+		{
+			name:        "base/several different sizes with intersection",
+			expressions: []string{"a.c", "a.b", "a.x.y"},
+			accepted:    []string{"ac", "ab", "axy"},
+			notAccepted: []string{"c", "ax", "b"},
 		},
 	}
 	for _, tt := range tests {
