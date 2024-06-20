@@ -208,7 +208,9 @@ func TestRedact(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.JSONEq(t, tt.want, Redact(tt.args.json, tt.args.keys, handler))
+			redactor := NewRedactor(tt.args.keys, handler)
+			assert.JSONEq(t, tt.want, redactor.Redact(tt.args.json))
+			assert.JSONEq(t, tt.want, redactor.Redact(tt.args.json), "reuse redactor with same result")
 		})
 	}
 }
