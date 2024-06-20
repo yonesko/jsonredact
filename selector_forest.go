@@ -7,22 +7,6 @@ import (
 
 type selectorForest map[string]selectorForest
 
-//func (forest selectorForest) selectForest(key gjson.Result) selectorForest {
-//	f, ok := forest[key.String()]
-//	if ok {
-//		return f
-//	}
-//	f, ok = forest[`\`+key.String()]
-//	if ok {
-//		return f
-//	}
-//	f, ok = forest["#"]
-//	if ok {
-//		return f
-//	}
-//	return f
-//}
-
 func (forest selectorForest) mergeWith(other selectorForest) {
 	for k := range other {
 		if forest[k] == nil {
@@ -43,6 +27,12 @@ func (forest selectorForest) mergeWith(other selectorForest) {
 
 func (forest selectorForest) hasChildren() bool {
 	return len(forest) != 0
+}
+
+func (forest selectorForest) isTerminalMatch(key string) bool {
+	return (forest[key] != nil && len(forest[key]) == 0) ||
+		(forest["#"] != nil && len(forest["#"]) == 0) ||
+		((key == "*" || key == "#") && forest[`\`+key] != nil && len(forest[`\`+key]) == 0)
 }
 
 func (forest selectorForest) add(str string) {

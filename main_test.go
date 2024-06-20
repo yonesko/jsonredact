@@ -130,11 +130,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: `{ "a\"": 1 }`, keys: []string{`a\"`}},
 			want: `{ "a\"": "REDACTED" }`,
 		},
-		//{
-		//	name: "escape/star in name",
-		//	args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
-		//	want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
-		//},
+		{
+			name: "escape/star in name",
+			args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
+			want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
+		},
 		{
 			name: "escape/escaped star in name",
 			args: args{json: `{ "\\*": 1,"\\\\*": 2,"\\*\\*": 3}`, keys: []string{`\\\*`, `\\\\\*`, `\\\*\\\*`}},
@@ -145,11 +145,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: `{ "\\":1}`, keys: []string{`\\`}},
 			want: `{ "\\":"REDACTED"}`,
 		},
-		//{
-		//	name: "escape/# in name",
-		//	args: args{json: `{ "#":1,"##":2,"a#b":3"}`, keys: []string{`\#`, `a\#b`}},
-		//	want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
-		//},
+		{
+			name: "escape/# in name",
+			args: args{json: `{ "#":1,"##":2,"a#b":3"}`, keys: []string{`\#`, `a\#b`}},
+			want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
+		},
 		{
 			name: "wildcard/all array elements",
 			args: args{json: `{ "children": [ "Sara", "Alex", "Jack" ] }`, keys: []string{`children.#`}},
