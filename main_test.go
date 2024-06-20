@@ -204,6 +204,7 @@ func TestRedact(t *testing.T) {
 		//		keys: []string{`*.a`, `b.c.n`, `b.c.*.k`}},
 		//	want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
 		//},
+		//TODO array index escape
 		{
 			name: "recursive/in middle",
 			args: args{json: `{"a":{"b":{"name":"d","c":{"a":{"b":[[{"name":"d"},[{"name":"d"}]]],"name":"b"}}}},"name":"b"}`,
