@@ -23,11 +23,20 @@ func (a dfa) isInTerminalState() bool {
 
 func merge(left, right dfa) dfa {
 	automata := dfa{}
-	for k := range left {
-		automata[k] = merge(right[k], left[k])
-	}
-	for k := range right {
-		automata[k] = merge(right[k], left[k])
+	for _, a := range []dfa{left, right} {
+		for k := range a {
+			r := right[k]
+			l := left[k]
+			if r.isInTerminalState() {
+				automata[k] = r
+				continue
+			}
+			if l.isInTerminalState() {
+				automata[k] = l
+				continue
+			}
+			automata[k] = merge(r, l)
+		}
 	}
 	return automata
 }

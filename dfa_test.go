@@ -2,6 +2,7 @@ package jsonredact
 
 import (
 	"github.com/stretchr/testify/require"
+	"math/rand/v2"
 	"testing"
 )
 
@@ -45,15 +46,26 @@ func Test_newDFA(t *testing.T) {
 			accepted:    []string{"ac", "ab", "axy"},
 			notAccepted: []string{"c", "ax", "b"},
 		},
+		{
+			name:        "base/do not override general by particular",
+			expressions: []string{"a", "a.b"},
+			accepted:    []string{"a", "ab", "axy"},
+			notAccepted: []string{"c", "x", "b"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := newDFA(tt.expressions...)
-			for _, input := range tt.accepted {
-				require.True(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
-			}
-			for _, input := range tt.notAccepted {
-				require.False(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
+			for i := 0; i < 10; i++ {
+				rand.Shuffle(len(tt.expressions), func(i, j int) {
+					tt.expressions[i], tt.expressions[j] = tt.expressions[j], tt.expressions[i]
+				})
+				a := newDFA(tt.expressions...)
+				for _, input := range tt.accepted {
+					require.True(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
+				}
+				for _, input := range tt.notAccepted {
+					require.False(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
+				}
 			}
 		})
 	}
