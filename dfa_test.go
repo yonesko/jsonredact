@@ -48,9 +48,9 @@ func Test_newDFA(t *testing.T) {
 		},
 		{
 			name:        "base/do not override general by particular",
-			expressions: []string{"a", "a.b"},
-			accepted:    []string{"a", "ab", "axy"},
-			notAccepted: []string{"c", "x", "b"},
+			expressions: []string{"a", "a.b", "x.y.z.g.d.g", "x.y.z.g.d", "x"},
+			accepted:    []string{"a", "ab", "axy", "x"},
+			notAccepted: []string{"c", "fx", "b"},
 		},
 	}
 	for _, tt := range tests {
