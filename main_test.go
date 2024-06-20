@@ -45,6 +45,11 @@ func TestRedact(t *testing.T) {
 			want: `{"a":"REDACTED","b":"REDACTED","c":1}`,
 		},
 		{
+			name: "base/no match",
+			args: args{json: bigJson, keys: []string{"1age", "1fav.movie", "1friends", "1name.last"}},
+			want: bigJson,
+		},
+		{
 			name: "base/plain path of 3 depth",
 			args: args{json: `{"a":{"b":{"c":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "c"}},
 			want: `{"a":{"b":{"c":"REDACTED"}},"b":1,"c":"REDACTED"}`,
@@ -58,6 +63,16 @@ func TestRedact(t *testing.T) {
 			name: "base/two paths with common prefix and different depth",
 			args: args{json: `{"a":{"b":{"c":1, "d":{"f":1} }},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d.e"}},
 			want: `{"a":{"b":{"c":"REDACTED", "d":{"f":1} }},"b":1,"c":1}`,
+		},
+		{
+			name: "base/do not override general by particular",
+			args: args{json: `{"a":{"b":1}}`, keys: []string{"a", "a.b"}},
+			want: `{"a":"REDACTED"}`,
+		},
+		{
+			name: "base/do not override general by particular, different order",
+			args: args{json: `{"a":{"b":1}}`, keys: []string{"a.b", "a"}},
+			want: `{"a":"REDACTED"}`,
 		},
 		{
 			name: "array/whole",
@@ -167,10 +182,17 @@ func TestRedact(t *testing.T) {
 			want: `{"a": "REDACTED", "h":{"a":"REDACTED", "b":"REDACTED", "k":{"y":{"a":"REDACTED", "t":109}}}}`,
 		},
 		{
-			name: "recursive/certain field of all fields and subfields",
-			args: args{json: `{ "a": {"b":{"name":"d","f":5}, "name":"b" }}`, keys: []string{`*.name`}},
-			want: `{ "a": {"b":{"name":"REDACTED","f":5}, "name":"REDACTED" }}`,
+			name: "recursive/intersection in keys",
+			args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+				keys: []string{`*.a.c`, `*.a.b`}},
+			want: `{"a": 1, "h":{"a":{"c":"REDACTED","b":"REDACTED","a":{"c":"REDACTED","b":"REDACTED"}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
 		},
+		//{TODO
+		//	name: "recursive/intersection with static key",
+		//	args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+		//		keys: []string{`*.a.c`, `a`}},
+		//	want: `{"a": "REDACTED", "h":{"a":{"c":"REDACTED","b":467,"a":{"c":"REDACTED","b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+		//},
 		//{
 		//	name: "recursive/675432",
 		//	args: args{json: `{ "a": 1, "b":{"c":{"n":3, "z":{"a":34,"k":654}}, "t":{"a":23, "z":0,"k":437}}}`,
@@ -178,25 +200,10 @@ func TestRedact(t *testing.T) {
 		//	want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
 		//},
 		{
-			name: "recursive/certain field of all fields and subfields of a certain object",
+			name: "recursive/in middle",
 			args: args{json: `{"a":{"b":{"name":"d","c":{"a":{"b":[[{"name":"d"},[{"name":"d"}]]],"name":"b"}}}},"name":"b"}`,
 				keys: []string{`a.*.name`}},
 			want: `{"a":{"b":{"name":"REDACTED","c":{"a":{"b":[[{"name":"REDACTED"},[{"name":"REDACTED"}]]],"name":"REDACTED"}}}},"name":"b"}`,
-		},
-		{
-			name: "without matched keys",
-			args: args{json: bigJson, keys: []string{"1age", "1fav.movie", "1friends", "1name.last"}},
-			want: bigJson,
-		},
-		{
-			name: "do not override general by particular",
-			args: args{json: `{"a":{"b":1}}`, keys: []string{"a", "a.b"}},
-			want: `{"a":"REDACTED"}`,
-		},
-		{
-			name: "do not override general by particular, different order",
-			args: args{json: `{"a":{"b":1}}`, keys: []string{"a.b", "a"}},
-			want: `{"a":"REDACTED"}`,
 		},
 	}
 	for _, tt := range tests {
@@ -204,7 +211,6 @@ func TestRedact(t *testing.T) {
 			assert.JSONEq(t, tt.want, Redact(tt.args.json, tt.args.keys, handler))
 		})
 	}
-	//TODO *.a.c    a
 }
 
 func TestConcurrent(t *testing.T) {
@@ -229,8 +235,8 @@ func TestConcurrent(t *testing.T) {
 goos: darwin
 goarch: arm64
 pkg: jsonredact
-Benchmark/with_matched_keys-10         	  663984	      1557 ns/op
-Benchmark/without_matched_keys-10      	  877837	      1099 ns/op
+Benchmark/with_matched_keys-10         	  426970	      2787 ns/op
+Benchmark/without_matched_keys-10      	  547496	      2211 ns/op
 */
 func Benchmark(b *testing.B) {
 	b.Run("with matched keys", func(b *testing.B) {
