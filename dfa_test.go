@@ -81,6 +81,12 @@ func Test_newDFA(t *testing.T) {
 			accepted:    []string{"ab", "jb", "kb", "kbkkrker", "abbb"},
 			notAccepted: []string{"b", "a"},
 		},
+		{
+			name:        "wildcard/intersection",
+			expressions: []string{"#.#.#", "#.#"},
+			accepted:    []string{"ab", "jb", "kb", "kbkkrker", "abbb"},
+			notAccepted: []string{"b", "a"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
