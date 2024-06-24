@@ -7,9 +7,6 @@ import (
 )
 
 func Test_newDFA(t *testing.T) {
-	type testCase struct {
-		input string
-	}
 	tests := []struct {
 		name        string
 		expressions []string
