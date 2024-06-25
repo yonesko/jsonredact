@@ -147,7 +147,6 @@ func (a dfa) String() string {
 	if err != nil {
 		panic(err)
 	}
-	//counter := 0
 	pointers := re.FindAllString(s, -1)
 	replace := make([]string, 0, len(pointers)*2)
 	for i := range pointers {
