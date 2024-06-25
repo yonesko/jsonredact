@@ -1,8 +1,10 @@
 package jsonredact
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"math/rand/v2"
+	"sync"
 	"testing"
 )
 
@@ -84,14 +86,30 @@ func Test_newDFA(t *testing.T) {
 			accepted:    []string{"ab", "jb", "kb", "kbkkrker", "abbb"},
 			notAccepted: []string{"b", "a"},
 		},
+		{
+			name:        "recursive/one key",
+			expressions: []string{"*.a"},
+			accepted:    []string{"aaaa", "htbgvfa", "ba", "ca"},
+			notAccepted: []string{"zwexrcvtb", "ygvb", "l"},
+		},
+		{
+			name:        "recursive/long one key",
+			expressions: []string{"*.a.b.c.d"},
+			accepted:    []string{"aaaaabcd", "abcd", "ohtygabcd", "abcdabcd"},
+			notAccepted: []string{"abc", "bcd", "cd"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			once := sync.Once{}
 			for i := 0; i < 10; i++ {
 				rand.Shuffle(len(tt.expressions), func(i, j int) {
 					tt.expressions[i], tt.expressions[j] = tt.expressions[j], tt.expressions[i]
 				})
 				a := newDFA(tt.expressions...)
+				once.Do(func() {
+					fmt.Println(a)
+				})
 				for _, input := range tt.accepted {
 					require.True(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
 				}
