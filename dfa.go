@@ -17,7 +17,9 @@ func newDFA(expressions ...string) dfa {
 	}
 	automata := dfa{}
 	for _, exp := range expressions {
-		automata = merge(automata, build(expression(exp).splitByPoint()))
+		rightToAutomata := map[uintptr]dfa{}
+		leftToAutomata := map[uintptr]dfa{}
+		automata = merge(automata, build(expression(exp).splitByPoint()), rightToAutomata, leftToAutomata)
 	}
 	return automata
 }
@@ -34,7 +36,7 @@ func (a dfa) isInTerminalState() bool {
 	return a["terminal"] != nil
 }
 
-func merge(left, right dfa) dfa {
+func merge(right, left dfa, rightToAutomata map[uintptr]dfa, leftToAutomata map[uintptr]dfa) dfa {
 	commonKeys := make(map[string]bool, len(left)+len(right))
 	automata := dfa{}
 	for k := range left {
@@ -51,6 +53,8 @@ func merge(left, right dfa) dfa {
 			commonKeys[k] = true
 		}
 	}
+	rightToAutomata[reflect.ValueOf(right).Pointer()] = automata
+	leftToAutomata[reflect.ValueOf(left).Pointer()] = automata
 	for k := range commonKeys {
 		r := right.next(k)
 		l := left.next(k)
@@ -62,12 +66,14 @@ func merge(left, right dfa) dfa {
 			automata[k] = l
 			continue
 		}
-		if k == "#" && reflect.ValueOf(right).Pointer() == reflect.ValueOf(right[k]).Pointer() &&
-			reflect.ValueOf(left).Pointer() == reflect.ValueOf(left[k]).Pointer() {
-			automata[k] = automata
+		//check recursion
+		if reflect.ValueOf(rightToAutomata[reflect.ValueOf(r).Pointer()]).Pointer() != 0 &&
+			reflect.ValueOf(rightToAutomata[reflect.ValueOf(r).Pointer()]).Pointer() ==
+				reflect.ValueOf(leftToAutomata[reflect.ValueOf(l).Pointer()]).Pointer() {
+			automata[k] = rightToAutomata[reflect.ValueOf(r).Pointer()]
 			continue
 		}
-		automata[k] = merge(r, l)
+		automata[k] = merge(r, l, rightToAutomata, leftToAutomata)
 	}
 	return automata
 }
