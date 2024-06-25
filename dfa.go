@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 type dfa map[string]dfa
@@ -32,10 +35,10 @@ func (a dfa) isInTerminalState() bool {
 }
 
 func merge(left, right dfa) dfa {
-	if left == nil {
+	if len(left) == 0 {
 		return right
 	}
-	if right == nil {
+	if len(right) == 0 {
 		return left
 	}
 	automata := dfa{}
@@ -73,7 +76,6 @@ func build(expressions []string) dfa {
 func buildRecursive(expressions []string) dfa {
 	root := dfa{}
 	root["#"] = root
-	//root[expressions[1]] = dfa{}
 	a := root
 	for i := 1; i < len(expressions); i++ {
 		if expressions[i] == "*" {
@@ -100,11 +102,15 @@ func (a dfa) string(been map[uintptr]bool) string {
 		return ""
 	}
 	been[ptr] = true
-	if len(a) == 0 {
+	if a.isInTerminalState() {
 		return ""
 	}
 	buffer.WriteString(fmt.Sprintf("state(%p) ", a))
 	for k, v := range a {
+		if v.isInTerminalState() {
+			buffer.WriteString(fmt.Sprintf("%s -> terminal ", k))
+			continue
+		}
 		buffer.WriteString(fmt.Sprintf("%s -> %p ", k, v))
 	}
 	buffer.WriteByte('\n')
@@ -116,5 +122,17 @@ func (a dfa) string(been map[uintptr]bool) string {
 
 func (a dfa) String() string {
 	been := map[uintptr]bool{}
-	return a.string(been)
+	s := a.string(been)
+	//0x1400012c9c0
+	re, err := regexp.Compile(`0x.{11}`)
+	if err != nil {
+		panic(err)
+	}
+	//counter := 0
+	pointers := re.FindAllString(s, -1)
+	replace := make([]string, 0, len(pointers)*2)
+	for i := range pointers {
+		replace = append(replace, pointers[i], strconv.Itoa(i))
+	}
+	return strings.NewReplacer(replace...).Replace(s)
 }
