@@ -35,33 +35,39 @@ func (a dfa) isInTerminalState() bool {
 }
 
 func merge(left, right dfa) dfa {
-	if len(left) == 0 {
-		return right
-	}
-	if len(right) == 0 {
-		return left
-	}
+	commonKeys := make(map[string]bool, len(left)+len(right))
 	automata := dfa{}
-	fmt.Println(left)
-	fmt.Println(right)
-	for _, a := range []dfa{left, right} {
-		for k := range a {
-			r := right.next(k)
-			l := left.next(k)
-			if r.isInTerminalState() {
-				automata[k] = r
-				continue
-			}
-			if l.isInTerminalState() {
-				automata[k] = l
-				continue
-			}
-			if k == "#" && reflect.ValueOf(a).Pointer() == reflect.ValueOf(a[k]).Pointer() {
-				automata[k] = automata
-				continue
-			}
-			automata[k] = merge(r, l)
+	for k := range left {
+		if right[k] == nil {
+			automata[k] = left[k]
+		} else {
+			commonKeys[k] = true
 		}
+	}
+	for k := range right {
+		if left[k] == nil {
+			automata[k] = right[k]
+		} else {
+			commonKeys[k] = true
+		}
+	}
+	for k := range commonKeys {
+		r := right.next(k)
+		l := left.next(k)
+		if r.isInTerminalState() {
+			automata[k] = r
+			continue
+		}
+		if l.isInTerminalState() {
+			automata[k] = l
+			continue
+		}
+		if k == "#" && reflect.ValueOf(right).Pointer() == reflect.ValueOf(right[k]).Pointer() &&
+			reflect.ValueOf(left).Pointer() == reflect.ValueOf(left[k]).Pointer() {
+			automata[k] = automata
+			continue
+		}
+		automata[k] = merge(r, l)
 	}
 	return automata
 }
