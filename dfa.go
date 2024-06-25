@@ -42,6 +42,8 @@ func merge(left, right dfa) dfa {
 		return left
 	}
 	automata := dfa{}
+	fmt.Println(left)
+	fmt.Println(right)
 	for _, a := range []dfa{left, right} {
 		for k := range a {
 			r := right.next(k)
@@ -87,11 +89,12 @@ func buildRecursive(expressions []string) dfa {
 			return root
 		}
 		next := dfa{"#": root}
-		if i > 1 {
-			next[expressions[1]] = root[expressions[1]]
-		}
 		if i == len(expressions)-1 {
 			next["terminal"] = dfa{}
+		} else if i == 1 {
+			next[expressions[i]] = next
+		} else {
+			next[expressions[1]] = root[expressions[1]]
 		}
 		a[expressions[i]] = next
 		a = next
