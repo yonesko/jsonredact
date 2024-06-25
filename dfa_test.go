@@ -122,6 +122,12 @@ func Test_newDFA(t *testing.T) {
 			accepted:    []string{"xxab", "xxabbb", "xxabxx", "xxacxx", "ab", "ac", "abc"},
 			notAccepted: []string{"xxx", "axc", "axb"},
 		},
+		{
+			name:        "recursive/intersection",
+			expressions: []string{"*.a.b", "*.a.b"},
+			accepted:    []string{"ab", "xxab", "abcc", "xxabxx"},
+			notAccepted: []string{"xxx", "axb", "ba"},
+		},
 		//TODO escape
 		//TODO *.a #.a
 	}

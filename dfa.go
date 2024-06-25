@@ -100,13 +100,15 @@ func buildRecursive(expressions []string) dfa {
 			a[expressions[i]] = buildRecursive(expressions[i+1:])
 			return root
 		}
-		next := dfa{"#": root}
+		next := dfa{}
 		if i == len(expressions)-1 {
 			next["terminal"] = dfa{}
 		} else if i == 1 {
 			next[expressions[i]] = next
+			next["#"] = root
 		} else {
 			next[expressions[1]] = root[expressions[1]]
+			next["#"] = root
 		}
 		a[expressions[i]] = next
 		a = next
