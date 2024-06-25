@@ -78,8 +78,8 @@ func buildRecursive(expressions []string) dfa {
 	root["#"] = root
 	a := root
 	for i := 1; i < len(expressions); i++ {
-		if expressions[i] == "*" {
-			a[expressions[i-1]] = buildRecursive(expressions[i:])
+		if len(expressions) > i+1 && expressions[i+1] == "*" {
+			a[expressions[i]] = buildRecursive(expressions[i+1:])
 			return root
 		}
 		next := dfa{"#": root}
