@@ -123,6 +123,7 @@ func Test_newDFA(t *testing.T) {
 		//	notAccepted: []string{"xxx", "axc", "abc"},
 		//},
 		//TODO escape
+		//TODO *.a #.a
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
