@@ -114,6 +114,7 @@ func Test_newDFA(t *testing.T) {
 				})
 				a := newDFA(tt.expressions...)
 				once.Do(func() {
+					fmt.Println(tt.expressions)
 					fmt.Println(a)
 				})
 				for _, input := range tt.accepted {
