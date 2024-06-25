@@ -54,6 +54,10 @@ func merge(left, right dfa) dfa {
 				automata[k] = l
 				continue
 			}
+			if k == "#" && reflect.ValueOf(a).Pointer() == reflect.ValueOf(a[k]).Pointer() {
+				automata[k] = automata
+				continue
+			}
 			automata[k] = merge(r, l)
 		}
 	}

@@ -99,10 +99,16 @@ func Test_newDFA(t *testing.T) {
 			notAccepted: []string{"abc", "bcd", "cd"},
 		},
 		{
-			name:        "recursive/several stars on key",
+			name:        "recursive/several stars in key",
 			expressions: []string{"*.a.*.b"},
 			accepted:    []string{"xxaxxxxb", "aaaaabcd", "abcd", "ohtygab", "axxxb"},
 			notAccepted: []string{"ac", "bcd", "bb"},
+		},
+		{
+			name:        "recursive/several keys",
+			expressions: []string{"*.a", "*.b"},
+			accepted:    []string{"xxxxxa", "xxxxxb", "a", "b", "ab", "ba"},
+			notAccepted: []string{"xxx", "ghfd", "tttt"},
 		},
 	}
 	for _, tt := range tests {
