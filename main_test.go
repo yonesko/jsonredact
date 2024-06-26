@@ -1,6 +1,7 @@
 package jsonredact
 
 import (
+	"bytes"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -243,18 +244,35 @@ func TestConcurrent(t *testing.T) {
 goos: darwin
 goarch: arm64
 pkg: jsonredact
-Benchmark/with_matched_keys-10         	  426970	      2787 ns/op
-Benchmark/without_matched_keys-10      	  547496	      2211 ns/op
+Benchmark/just_copy-10         	1000000000	         0.0000032 ns/op
+Benchmark/with_matched_keys-10         	  1275627	       921.1 ns/op
+Benchmark/without_matched_keys-10      	  1825269	       657.1 ns/op
+Benchmark/recursive-10                    	  455151	      2641 ns/op
 */
 func Benchmark(b *testing.B) {
-	b.Run("with matched keys", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			Redact(bigJson, []string{"age", "fav.movie", "friends", "name.last"}, func(s string) string { return `REDACTED` })
-		}
+	b.Run("just copy", func(b *testing.B) {
+		buffer := bytes.NewBuffer(make([]byte, 0, len(bigJson)))
+		buffer.WriteString(bigJson)
 	})
 	b.Run("without matched keys", func(b *testing.B) {
+		redactor := NewRedactor([]string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			Redact(bigJson, []string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `REDACTED` })
+			_ = redactor.Redact(bigJson)
+		}
+	})
+	b.Run("with matched keys", func(b *testing.B) {
+		redactor := NewRedactor([]string{"age", "fav.movie", "friends", "name.last"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
+		}
+	})
+	b.Run("recursive", func(b *testing.B) {
+		redactor := NewRedactor([]string{"*.a"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
 		}
 	})
 }
