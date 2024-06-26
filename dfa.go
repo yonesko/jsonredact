@@ -3,147 +3,146 @@ package jsonredact
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-type dfa map[string]dfa
+type node struct {
+	isTerminal  bool
+	transitions map[string]*node
+}
 
-func newDFA(expressions ...string) dfa {
+func newNode() *node {
+	return &node{transitions: map[string]*node{}}
+}
+
+func newDFA(expressions ...string) *node {
 	if len(expressions) == 0 {
-		return dfa{}
+		return newNode()
 	}
-	automata := dfa{}
+	automata := newNode()
 	for _, exp := range expressions {
-		rightToAutomata := map[uintptr]dfa{}
-		leftToAutomata := map[uintptr]dfa{}
+		rightToAutomata := map[*node]*node{}
+		leftToAutomata := map[*node]*node{}
 		automata = merge(automata, build(expression(exp).splitByPoint()), rightToAutomata, leftToAutomata)
 	}
 	return automata
 }
 
-func (a dfa) next(input string) dfa {
-	automata := a[input]
+func (n *node) next(input string) *node {
+	automata := n.transitions[input]
 	if automata != nil {
 		return automata
 	}
-	return a["#"]
+	return n.transitions["#"]
 }
 
-func (a dfa) isInTerminalState() bool {
-	return a["terminal"] != nil
-}
-
-func merge(right, left dfa, rightToAutomata map[uintptr]dfa, leftToAutomata map[uintptr]dfa) dfa {
-	commonKeys := make(map[string]bool, len(left)+len(right))
-	automata := dfa{}
-	for k := range left {
-		if right[k] == nil {
-			automata[k] = left[k]
+func merge(right, left *node, rightToAutomata map[*node]*node, leftToAutomata map[*node]*node) *node {
+	commonKeys := make(map[string]bool, len(left.transitions)+len(right.transitions))
+	automata := newNode()
+	for k := range left.transitions {
+		if right.transitions[k] == nil {
+			automata.transitions[k] = left.transitions[k]
 		} else {
 			commonKeys[k] = true
 		}
 	}
-	for k := range right {
-		if left[k] == nil {
-			automata[k] = right[k]
+	for k := range right.transitions {
+		if left.transitions[k] == nil {
+			automata.transitions[k] = right.transitions[k]
 		} else {
 			commonKeys[k] = true
 		}
 	}
-	rightToAutomata[reflect.ValueOf(right).Pointer()] = automata
-	leftToAutomata[reflect.ValueOf(left).Pointer()] = automata
+	rightToAutomata[right] = automata
+	leftToAutomata[left] = automata
 	for k := range commonKeys {
 		r := right.next(k)
 		l := left.next(k)
-		if r.isInTerminalState() {
-			automata[k] = r
+		if r.isTerminal {
+			automata.transitions[k] = r
 			continue
 		}
-		if l.isInTerminalState() {
-			automata[k] = l
+		if l.isTerminal {
+			automata.transitions[k] = l
 			continue
 		}
 		//check recursion
-		if reflect.ValueOf(rightToAutomata[reflect.ValueOf(r).Pointer()]).Pointer() != 0 &&
-			reflect.ValueOf(rightToAutomata[reflect.ValueOf(r).Pointer()]).Pointer() ==
-				reflect.ValueOf(leftToAutomata[reflect.ValueOf(l).Pointer()]).Pointer() {
-			automata[k] = rightToAutomata[reflect.ValueOf(r).Pointer()]
+		if rightToAutomata[r] != nil && rightToAutomata[r] == leftToAutomata[l] {
+			automata.transitions[k] = rightToAutomata[r]
 			continue
 		}
-		automata[k] = merge(r, l, rightToAutomata, leftToAutomata)
+		automata.transitions[k] = merge(r, l, rightToAutomata, leftToAutomata)
 	}
 	return automata
 }
 
-func build(expressions []string) dfa {
+func build(expressions []string) *node {
 	if len(expressions) == 0 {
-		return dfa{"terminal": dfa{}}
+		return &node{isTerminal: true}
 	}
-	a := dfa{}
+	a := newNode()
 	if expressions[0] == "*" {
 		return buildRecursive(expressions)
 	}
-	a[expressions[0]] = build(expressions[1:])
+	a.transitions[expressions[0]] = build(expressions[1:])
 	return a
 }
 
-// buildRecursive builds dfa from recursive expression, (example *.a.b, *.a.*.b)
-func buildRecursive(expressions []string) dfa {
-	root := dfa{}
-	root["#"] = root
+// buildRecursive builds *node from recursive expression, (example *.a.b, *.a.*.b)
+func buildRecursive(expressions []string) *node {
+	root := newNode()
+	root.transitions["#"] = root
 	a := root
 	for i := 1; i < len(expressions); i++ {
 		if len(expressions) > i+1 && expressions[i+1] == "*" {
-			a[expressions[i]] = buildRecursive(expressions[i+1:])
+			a.transitions[expressions[i]] = buildRecursive(expressions[i+1:])
 			return root
 		}
-		next := dfa{}
+		next := newNode()
 		if i == len(expressions)-1 {
-			next["terminal"] = dfa{}
+			next.isTerminal = true
 		} else if i == 1 {
-			next[expressions[i]] = next
-			next["#"] = root
+			next.transitions[expressions[i]] = next
+			next.transitions["#"] = root
 		} else {
-			next[expressions[1]] = root[expressions[1]]
-			next["#"] = root
+			next.transitions[expressions[1]] = root.transitions[expressions[1]]
+			next.transitions["#"] = root
 		}
-		a[expressions[i]] = next
+		a.transitions[expressions[i]] = next
 		a = next
 	}
 	return root
 }
 
-func (a dfa) string(been map[uintptr]bool) string {
+func (n *node) string(been map[*node]bool) string {
 	buffer := bytes.Buffer{}
-	ptr := reflect.ValueOf(a).Pointer()
-	if been[ptr] {
+	if been[n] {
 		return ""
 	}
-	been[ptr] = true
-	if a.isInTerminalState() {
+	been[n] = true
+	if n.isTerminal {
 		return ""
 	}
-	buffer.WriteString(fmt.Sprintf("state(%p) ", a))
-	for k, v := range a {
-		if v.isInTerminalState() {
+	buffer.WriteString(fmt.Sprintf("state(%p) ", n))
+	for k, v := range n.transitions {
+		if v.isTerminal {
 			buffer.WriteString(fmt.Sprintf("%s -> terminal ", k))
 			continue
 		}
 		buffer.WriteString(fmt.Sprintf("%s -> %p ", k, v))
 	}
 	buffer.WriteByte('\n')
-	for _, v := range a {
+	for _, v := range n.transitions {
 		buffer.WriteString(v.string(been))
 	}
 	return buffer.String()
 }
 
-func (a dfa) String() string {
-	been := map[uintptr]bool{}
-	s := a.string(been)
+func (n *node) String() string {
+	been := map[*node]bool{}
+	s := n.string(been)
 	//0x1400012c9c0
 	re, err := regexp.Compile(`0x.{11}`)
 	if err != nil {
