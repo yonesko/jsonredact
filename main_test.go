@@ -29,11 +29,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: bigJson},
 			want: bigJson,
 		},
-		//{
-		//	name: "base/plain path of 0 depth",
-		//	args: args{json: `{"a":1,"b":1,"c":1, "x":{"terminal":577}"}`, keys: []string{"a", "b", "x.terminal"}},
-		//	want: `{"a":"REDACTED","b":"REDACTED","c":1, "x":{"terminal":"REDACTED"}}`,
-		//},
+		{
+			name: "base/plain path of 0 depth",
+			args: args{json: `{"a":1,"b":1,"c":1, "x":{"terminal":577}"}`, keys: []string{"a", "b", "x.terminal"}},
+			want: `{"a":"REDACTED","b":"REDACTED","c":1, "x":{"terminal":"REDACTED"}}`,
+		},
 		{
 			name: "base/no match",
 			args: args{json: bigJson, keys: []string{"1age", "1fav.movie", "1friends", "1name.last"}},
