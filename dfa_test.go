@@ -166,10 +166,13 @@ func Test_newDFA(t *testing.T) {
 	}
 }
 
-func accepts(a dfa, input string) bool {
+func accepts(a *node, input string) bool {
 	for _, v := range input {
 		a = a.next(string(v))
-		if a.isInTerminalState() {
+		if a == nil {
+			return false
+		}
+		if a.isTerminal {
 			return true
 		}
 	}
