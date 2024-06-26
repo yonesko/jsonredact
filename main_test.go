@@ -1,6 +1,7 @@
 package jsonredact
 
 import (
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -231,12 +232,26 @@ func TestConcurrent(t *testing.T) {
 /*
 goos: darwin
 goarch: arm64
+Benchmark/just_unmarshal-10         	   31962	     37408 ns/op
 Benchmark/empty_selectors-10         	567601761	         2.108 ns/op
 Benchmark/without_matched_keys-10         	  285404	      3945 ns/op
 Benchmark/with_matched_keys-10            	  306650	      3731 ns/op
 Benchmark/recursive-10                    	   34078	     36759 ns/op
 */
 func Benchmark(b *testing.B) {
+	b.Run("just unmarshal", func(b *testing.B) {
+		bytes := []byte(bigJson)
+		var m []any
+		err := json.Unmarshal(bytes, &m)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var m []any
+			_ = json.Unmarshal(bytes, &m)
+		}
+	})
 	b.Run("empty selectors", func(b *testing.B) {
 		redactor := NewRedactor([]string{}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
