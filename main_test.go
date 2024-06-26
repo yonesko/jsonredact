@@ -231,7 +231,7 @@ func TestConcurrent(t *testing.T) {
 /*
 goos: darwin
 goarch: arm64
-Benchmark/empty_selectors-10         	  298310	      3673 ns/op
+Benchmark/empty_selectors-10         	567601761	         2.108 ns/op
 Benchmark/without_matched_keys-10         	  285404	      3945 ns/op
 Benchmark/with_matched_keys-10            	  306650	      3731 ns/op
 Benchmark/recursive-10                    	   34078	     36759 ns/op

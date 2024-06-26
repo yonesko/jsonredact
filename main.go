@@ -25,6 +25,9 @@ func Redact(json string, keySelectors []string, handler func(string) string) str
 }
 
 func (r Redactor) Redact(json string) string {
+	if len(r.automata) == 0 {
+		return json
+	}
 	buffer := bytes.NewBuffer(make([]byte, 0, len(json)))
 	r.redact(json, r.automata, buffer)
 	return buffer.String()
