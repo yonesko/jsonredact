@@ -232,11 +232,11 @@ func TestConcurrent(t *testing.T) {
 /*
 goos: darwin
 goarch: arm64
-Benchmark/just_unmarshal-10                32876             36962 ns/op           27976 B/op        747 allocs/op
-Benchmark/empty_selectors-10            572897871                2.120 ns/op           0 B/op          0 allocs/op
-Benchmark/without_matched_keys-10         331628              3580 ns/op            6384 B/op         12 allocs/op
-Benchmark/with_matched_keys-10            335628              3649 ns/op            6384 B/op         12 allocs/op
-Benchmark/recursive-10                     36390             33104 ns/op            9576 B/op        145 allocs/op
+Benchmark/just_unmarshal-10                31650             36497 ns/op           27976 B/op        747 allocs/op
+Benchmark/empty_selectors-10            562809985                2.115 ns/op           0 B/op          0 allocs/op
+Benchmark/without_matched_keys-10         381774              3131 ns/op            6144 B/op          2 allocs/op
+Benchmark/with_matched_keys-10            394826              3243 ns/op            6144 B/op          2 allocs/op
+Benchmark/recursive-10                     46693             25844 ns/op            6144 B/op          2 allocs/op
 */
 func Benchmark(b *testing.B) {
 	b.Run("just unmarshal", func(b *testing.B) {

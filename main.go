@@ -3,6 +3,7 @@ package jsonredact
 import (
 	"bytes"
 	"github.com/tidwall/gjson"
+	"strconv"
 )
 
 type Redactor struct {
@@ -42,7 +43,10 @@ func (r Redactor) redact(json string, automata dfa, buf *bytes.Buffer) {
 	}
 	var index int
 	root.ForEach(func(key, value gjson.Result) bool {
-		keyStr := key.String()
+		keyStr := key.Str
+		if root.IsArray() {
+			keyStr = strconv.Itoa(index)
+		}
 		if index != 0 {
 			_ = buf.WriteByte(',')
 		}
