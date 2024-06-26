@@ -1,7 +1,6 @@
 package jsonredact
 
 import (
-	"bytes"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -232,15 +231,18 @@ func TestConcurrent(t *testing.T) {
 /*
 goos: darwin
 goarch: arm64
-Benchmark/just_copy-10         	1000000000	         0.0000009 ns/op
+Benchmark/empty_selectors-10         	  298310	      3673 ns/op
 Benchmark/without_matched_keys-10         	  285404	      3945 ns/op
 Benchmark/with_matched_keys-10            	  306650	      3731 ns/op
 Benchmark/recursive-10                    	   34078	     36759 ns/op
 */
 func Benchmark(b *testing.B) {
-	b.Run("just copy", func(b *testing.B) {
-		buffer := bytes.NewBuffer(make([]byte, 0, len(bigJson)))
-		buffer.WriteString(bigJson)
+	b.Run("empty selectors", func(b *testing.B) {
+		redactor := NewRedactor([]string{}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
+		}
 	})
 	b.Run("without matched keys", func(b *testing.B) {
 		redactor := NewRedactor([]string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `REDACTED` })
