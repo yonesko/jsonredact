@@ -25,54 +25,47 @@ func Redact(json string, keySelectors []string, handler func(string) string) str
 }
 
 func (r Redactor) Redact(json string) string {
-	s := state{json: json, automata: r.automata, handler: r.handler, buf: bytes.NewBuffer(make([]byte, 0, len(json)))}
-	s.redact()
-	return s.buf.String()
+	buffer := bytes.NewBuffer(make([]byte, 0, len(json)))
+	r.redact(json, r.automata, buffer)
+	return buffer.String()
 }
 
-type state struct {
-	json     string
-	automata dfa
-	handler  func(string) string
-	index    int
-	buf      *bytes.Buffer
-}
-
-func (s *state) redact() {
-	root := gjson.Parse(s.json)
+func (r Redactor) redact(json string, automata dfa, buf *bytes.Buffer) {
+	root := gjson.Parse(json)
 	if root.IsArray() {
-		_ = s.buf.WriteByte('[')
+		_ = buf.WriteByte('[')
 	} else {
-		_ = s.buf.WriteByte('{')
+		_ = buf.WriteByte('{')
 	}
+	var index int
 	root.ForEach(func(key, value gjson.Result) bool {
 		keyStr := key.String()
-		if s.index != 0 {
-			_ = s.buf.WriteByte(',')
+		if index != 0 {
+			_ = buf.WriteByte(',')
 		}
-		s.index++
-		_, _ = s.buf.WriteString(key.Raw)
+		index++
+		_, _ = buf.WriteString(key.Raw)
 		if !root.IsArray() {
-			_ = s.buf.WriteByte(':')
+			_ = buf.WriteByte(':')
 		}
 
-		automata := s.automata.next(keyStr)
-		if automata.isInTerminalState() {
-			_ = s.buf.WriteByte('"')
-			_, _ = s.buf.WriteString(s.handler(value.Raw))
-			_ = s.buf.WriteByte('"')
+		next := automata.next(keyStr)
+		if next.isInTerminalState() {
+			_ = buf.WriteByte('"')
+			_, _ = buf.WriteString(r.handler(value.Raw))
+			_ = buf.WriteByte('"')
 			return true
 		}
-		if automata == nil || (!value.IsObject() && !value.IsArray()) {
-			_, _ = s.buf.WriteString(value.Raw)
+		if next == nil || (!value.IsObject() && !value.IsArray()) {
+			_, _ = buf.WriteString(value.Raw)
 			return true
 		}
-		(&state{json: value.Raw, automata: automata, handler: s.handler, buf: s.buf}).redact()
+		r.redact(value.Raw, next, buf)
 		return true
 	})
 	if root.IsArray() {
-		_ = s.buf.WriteByte(']')
+		_ = buf.WriteByte(']')
 	} else {
-		_ = s.buf.WriteByte('}')
+		_ = buf.WriteByte('}')
 	}
 }
