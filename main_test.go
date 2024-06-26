@@ -2,6 +2,7 @@ package jsonredact
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -120,11 +121,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: `{ "a\"": 1 }`, keys: []string{`a\"`}},
 			want: `{ "a\"": "REDACTED" }`,
 		},
-		//{
-		//	name: "escape/star in name",
-		//	args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
-		//	want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
-		//},
+		{
+			name: "escape/star in name",
+			args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
+			want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
+		},
 		{
 			name: "escape/escaped star in name",
 			args: args{json: `{ "\\*": 1,"\\\\*": 2,"\\*\\*": 3}`, keys: []string{`\\\*`, `\\\\\*`, `\\\*\\\*`}},
@@ -135,11 +136,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: `{ "\\":1}`, keys: []string{`\\`}},
 			want: `{ "\\":"REDACTED"}`,
 		},
-		//{
-		//	name: "escape/# in name",
-		//	args: args{json: `{ "#":1,"##":2,"a#b":3"}`, keys: []string{`\#`, `a\#b`}},
-		//	want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
-		//},
+		{
+			name: "escape/# in name",
+			args: args{json: `{ "#":1,"##":2,"a#b":3"}`, keys: []string{`\#`, `a\#b`}},
+			want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
+		},
 		{
 			name: "wildcard/all array elements",
 			args: args{json: `{ "children": [ "Sara", "Alex", "Jack" ] }`, keys: []string{`children.#`}},
@@ -182,18 +183,18 @@ func TestRedact(t *testing.T) {
 				keys: []string{`*.a.c`, `*.a.b`}},
 			want: `{"a": 1, "h":{"a":{"c":"REDACTED","b":"REDACTED","a":{"c":"REDACTED","b":"REDACTED"}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
 		},
-		//{TODO
-		//	name: "recursive/intersection with static key",
-		//	args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
-		//		keys: []string{`*.a.c`, `a`}},
-		//	want: `{"a": "REDACTED", "h":{"a":{"c":"REDACTED","b":467,"a":{"c":"REDACTED","b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
-		//},
-		//{
-		//	name: "recursive/675432",
-		//	args: args{json: `{ "a": 1, "b":{"c":{"n":3, "z":{"a":34,"k":654}}, "t":{"a":23, "z":0,"k":437}}}`,
-		//		keys: []string{`*.a`, `b.c.n`, `b.c.*.k`}},
-		//	want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
-		//},
+		{
+			name: "recursive/intersection with static key",
+			args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+				keys: []string{`*.a.c`, `a`}},
+			want: `{"a": "REDACTED", "h":{"a":{"c":"REDACTED","b":467,"a":{"c":"REDACTED","b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+		},
+		{
+			name: "recursive/intersection with static key",
+			args: args{json: `{ "a": 1, "b":{"c":{"n":3, "z":{"a":34,"k":654}}, "t":{"a":23, "z":0,"k":437}}}`,
+				keys: []string{`*.a`, `b.c.n`, `b.c.*.k`}},
+			want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
+		},
 		//TODO array index escape
 		{
 			name: "recursive/in middle",
@@ -205,6 +206,7 @@ func TestRedact(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
+			fmt.Println(redactor.automata)
 			assert.JSONEq(t, tt.want, redactor.Redact(tt.args.json))
 			assert.JSONEq(t, tt.want, redactor.Redact(tt.args.json), "reuse redactor with same result")
 		})

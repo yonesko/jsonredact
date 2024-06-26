@@ -35,6 +35,10 @@ func (n *node) next(input string) *node {
 	if automata != nil {
 		return automata
 	}
+	automata = n.transitions[`\`+input]
+	if (input == "*" || input == "#") && automata != nil {
+		return automata
+	}
 	return n.transitions["#"]
 }
 
