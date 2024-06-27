@@ -8,16 +8,16 @@ import (
 	"strings"
 )
 
-type node struct {
+type state struct {
 	isTerminal  bool
-	transitions map[string]*node
+	transitions map[string]*state
 }
 
-func newNode() *node {
-	return &node{transitions: map[string]*node{}}
+func newNode() *state {
+	return &state{transitions: map[string]*state{}}
 }
 
-func newDFA(expressions ...string) *node {
+func newDFA(expressions ...string) *state {
 	if len(expressions) == 0 {
 		return newNode()
 	}
@@ -26,8 +26,8 @@ func newDFA(expressions ...string) *node {
 	fmt.Println(automata)
 	fmt.Println("-----")
 	for i := 1; i < len(expressions); i++ {
-		rightToAutomata := map[*node]*node{}
-		leftToAutomata := map[*node]*node{}
+		rightToAutomata := map[*state]*state{}
+		leftToAutomata := map[*state]*state{}
 		automata = merge(automata, build(expression(expressions[i]).splitByPoint()), rightToAutomata, leftToAutomata)
 		fmt.Println(expressions[i])
 		fmt.Println(automata)
@@ -36,7 +36,7 @@ func newDFA(expressions ...string) *node {
 	return automata
 }
 
-func (n *node) next(input string) *node {
+func (n *state) next(input string) *state {
 	automata := n.transitions[input]
 	if automata != nil {
 		return automata
@@ -48,7 +48,7 @@ func (n *node) next(input string) *node {
 	return n.transitions["#"]
 }
 
-func merge(right, left *node, rightToAutomata map[*node]*node, leftToAutomata map[*node]*node) *node {
+func merge(right, left *state, rightToAutomata map[*state]*state, leftToAutomata map[*state]*state) *state {
 	commonKeys := make(map[string]bool, len(left.transitions)+len(right.transitions))
 	automata := newNode()
 	for k := range left.transitions {
@@ -88,9 +88,9 @@ func merge(right, left *node, rightToAutomata map[*node]*node, leftToAutomata ma
 	return automata
 }
 
-func build(expressions []string) *node {
+func build(expressions []string) *state {
 	if len(expressions) == 0 {
-		return &node{isTerminal: true}
+		return &state{isTerminal: true}
 	}
 	a := newNode()
 	if expressions[0] == "*" {
@@ -100,8 +100,8 @@ func build(expressions []string) *node {
 	return a
 }
 
-// buildRecursive builds *node from recursive expression, (example *.a.b, *.a.*.b)
-func buildRecursive(expressions []string) *node {
+// buildRecursive builds *state from recursive expression, (example *.a.b, *.a.*.b)
+func buildRecursive(expressions []string) *state {
 	root := newNode()
 	root.transitions["#"] = root
 	a := root
@@ -126,7 +126,7 @@ func buildRecursive(expressions []string) *node {
 	return root
 }
 
-func (n *node) string(been map[*node]bool) string {
+func (n *state) string(been map[*state]bool) string {
 	buffer := bytes.Buffer{}
 	if been[n] {
 		return ""
@@ -150,8 +150,8 @@ func (n *node) string(been map[*node]bool) string {
 	return buffer.String()
 }
 
-func (n *node) String() string {
-	been := map[*node]bool{}
+func (n *state) String() string {
+	been := map[*state]bool{}
 	s := n.string(been)
 	//0x1400012c9c0
 	re, err := regexp.Compile(`0x.{11}`)
