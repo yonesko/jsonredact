@@ -21,11 +21,17 @@ func newDFA(expressions ...string) *node {
 	if len(expressions) == 0 {
 		return newNode()
 	}
-	automata := newNode()
-	for _, exp := range expressions {
+	automata := build(expression(expressions[0]).splitByPoint())
+	fmt.Println(expressions[0])
+	fmt.Println(automata)
+	fmt.Println("-----")
+	for i := 1; i < len(expressions); i++ {
 		rightToAutomata := map[*node]*node{}
 		leftToAutomata := map[*node]*node{}
-		automata = merge(automata, build(expression(exp).splitByPoint()), rightToAutomata, leftToAutomata)
+		automata = merge(automata, build(expression(expressions[i]).splitByPoint()), rightToAutomata, leftToAutomata)
+		fmt.Println(expressions[i])
+		fmt.Println(automata)
+		fmt.Println("-----")
 	}
 	return automata
 }

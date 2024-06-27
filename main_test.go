@@ -178,7 +178,7 @@ func TestRedact(t *testing.T) {
 			want: `{"a": "REDACTED", "h":{"a":"REDACTED", "b":"REDACTED", "k":{"y":{"a":"REDACTED", "t":109}}}}`,
 		},
 		{
-			name: "recursive/intersection in keys",
+			name: "recursive/intersection with prefix",
 			args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
 				keys: []string{`*.a.c`, `*.a.b`}},
 			want: `{"a": 1, "h":{"a":{"c":"REDACTED","b":"REDACTED","a":{"c":"REDACTED","b":"REDACTED"}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
@@ -190,7 +190,7 @@ func TestRedact(t *testing.T) {
 			want: `{"a": "REDACTED", "h":{"a":{"c":"REDACTED","b":467,"a":{"c":"REDACTED","b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
 		},
 		{
-			name: "recursive/intersection with static key",
+			name: "recursive/intersection without prefix",
 			args: args{json: `{ "a": 1, "b":{"c":{"n":3, "z":{"a":34,"k":654}}, "t":{"a":23, "z":0,"k":437}}}`,
 				keys: []string{`*.a`, `b.c.n`, `b.c.*.k`}},
 			want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
