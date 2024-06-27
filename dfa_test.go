@@ -178,7 +178,7 @@ func Test_newDFA(t *testing.T) {
 	}
 }
 
-func accepts(a *node, input string) bool {
+func accepts(a *state, input string) bool {
 	for _, v := range input {
 		a = a.next(string(v))
 		if a == nil {

@@ -7,7 +7,7 @@ import (
 )
 
 type Redactor struct {
-	automata *node
+	automata *state
 	handler  func(string) string
 }
 
@@ -34,7 +34,7 @@ func (r Redactor) Redact(json string) string {
 	return buffer.String()
 }
 
-func (r Redactor) redact(json string, automata *node, buf *bytes.Buffer) {
+func (r Redactor) redact(json string, automata *state, buf *bytes.Buffer) {
 	root := gjson.Parse(json)
 	if root.IsArray() {
 		_ = buf.WriteByte('[')
