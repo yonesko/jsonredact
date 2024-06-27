@@ -7,7 +7,7 @@ import (
 )
 
 type Redactor struct {
-	automata *state
+	automata node
 	handler  func(string) string
 }
 
@@ -26,7 +26,7 @@ func Redact(json string, keySelectors []string, handler func(string) string) str
 }
 
 func (r Redactor) Redact(json string) string {
-	if len(r.automata.transitions) == 0 {
+	if len(r.automata.states) == 0 {
 		return json
 	}
 	buffer := bytes.NewBuffer(make([]byte, 0, len(json)))
@@ -34,7 +34,7 @@ func (r Redactor) Redact(json string) string {
 	return buffer.String()
 }
 
-func (r Redactor) redact(json string, automata *state, buf *bytes.Buffer) {
+func (r Redactor) redact(json string, automata node, buf *bytes.Buffer) {
 	root := gjson.Parse(json)
 	if root.IsArray() {
 		_ = buf.WriteByte('[')
@@ -57,13 +57,13 @@ func (r Redactor) redact(json string, automata *state, buf *bytes.Buffer) {
 		}
 
 		next := automata.next(keyStr)
-		if next != nil && next.isTerminal {
+		if next.isTerminal {
 			_ = buf.WriteByte('"')
 			_, _ = buf.WriteString(r.handler(value.Raw))
 			_ = buf.WriteByte('"')
 			return true
 		}
-		if next == nil || (!value.IsObject() && !value.IsArray()) {
+		if len(next.states) == 0 || (!value.IsObject() && !value.IsArray()) {
 			_, _ = buf.WriteString(value.Raw)
 			return true
 		}

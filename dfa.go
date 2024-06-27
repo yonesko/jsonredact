@@ -8,49 +8,67 @@ import (
 	"strings"
 )
 
+type node struct {
+	states     []*state
+	isTerminal bool
+}
+
 type state struct {
 	isTerminal  bool
 	transitions map[string]*state
 }
 
-func newNode() *state {
+func newNode() node {
+	return node{}
+}
+
+func newState() *state {
 	return &state{transitions: map[string]*state{}}
 }
 
-func newDFA(expressions ...string) *state {
+func newDFA(expressions ...string) node {
 	if len(expressions) == 0 {
 		return newNode()
 	}
-	automata := build(expression(expressions[0]).splitByPoint())
-	fmt.Println(expressions[0])
-	fmt.Println(automata)
-	fmt.Println("-----")
-	for i := 1; i < len(expressions); i++ {
-		rightToAutomata := map[*state]*state{}
-		leftToAutomata := map[*state]*state{}
-		automata = merge(automata, build(expression(expressions[i]).splitByPoint()), rightToAutomata, leftToAutomata)
-		fmt.Println(expressions[i])
-		fmt.Println(automata)
-		fmt.Println("-----")
+	states := make([]*state, 0, len(expressions))
+
+	for i := 0; i < len(expressions); i++ {
+		states = append(states, build(expression(expressions[i]).splitByPoint()))
 	}
-	return automata
+
+	return node{states: states}
 }
 
-func (n *state) next(input string) *state {
-	automata := n.transitions[input]
+func (n *node) next(input string) node {
+	states := make([]*state, 0, len(n.states))
+	var isTerminal bool
+	for _, s := range n.states {
+		nextState := s.next(input)
+		if nextState != nil {
+			states = append(states, nextState)
+			if nextState.isTerminal {
+				isTerminal = true
+			}
+		}
+	}
+	return node{states: states, isTerminal: isTerminal}
+}
+
+func (s *state) next(input string) *state {
+	automata := s.transitions[input]
 	if automata != nil {
 		return automata
 	}
-	automata = n.transitions[`\`+input]
+	automata = s.transitions[`\`+input]
 	if (input == "*" || input == "#") && automata != nil {
 		return automata
 	}
-	return n.transitions["#"]
+	return s.transitions["#"]
 }
 
 func merge(right, left *state, rightToAutomata map[*state]*state, leftToAutomata map[*state]*state) *state {
 	commonKeys := make(map[string]bool, len(left.transitions)+len(right.transitions))
-	automata := newNode()
+	automata := newState()
 	for k := range left.transitions {
 		if right.transitions[k] == nil {
 			automata.transitions[k] = left.transitions[k]
@@ -92,7 +110,7 @@ func build(expressions []string) *state {
 	if len(expressions) == 0 {
 		return &state{isTerminal: true}
 	}
-	a := newNode()
+	a := newState()
 	if expressions[0] == "*" {
 		return buildRecursive(expressions)
 	}
@@ -102,7 +120,7 @@ func build(expressions []string) *state {
 
 // buildRecursive builds *state from recursive expression, (example *.a.b, *.a.*.b)
 func buildRecursive(expressions []string) *state {
-	root := newNode()
+	root := newState()
 	root.transitions["#"] = root
 	a := root
 	for i := 1; i < len(expressions); i++ {
@@ -110,7 +128,7 @@ func buildRecursive(expressions []string) *state {
 			a.transitions[expressions[i]] = buildRecursive(expressions[i+1:])
 			return root
 		}
-		next := newNode()
+		next := newState()
 		if i == len(expressions)-1 {
 			next.isTerminal = true
 		} else if i == 1 {
@@ -126,17 +144,17 @@ func buildRecursive(expressions []string) *state {
 	return root
 }
 
-func (n *state) string(been map[*state]bool) string {
+func (s *state) string(been map[*state]bool) string {
 	buffer := bytes.Buffer{}
-	if been[n] {
+	if been[s] {
 		return ""
 	}
-	been[n] = true
-	if n.isTerminal {
+	been[s] = true
+	if s.isTerminal {
 		return ""
 	}
-	buffer.WriteString(fmt.Sprintf("state(%p) ", n))
-	for k, v := range n.transitions {
+	buffer.WriteString(fmt.Sprintf("state(%p) ", s))
+	for k, v := range s.transitions {
 		if v.isTerminal {
 			buffer.WriteString(fmt.Sprintf("%s -> terminal ", k))
 			continue
@@ -144,24 +162,42 @@ func (n *state) string(been map[*state]bool) string {
 		buffer.WriteString(fmt.Sprintf("%s -> %p ", k, v))
 	}
 	buffer.WriteByte('\n')
-	for _, v := range n.transitions {
+	for _, v := range s.transitions {
 		buffer.WriteString(v.string(been))
 	}
 	return buffer.String()
 }
 
-func (n *state) String() string {
+func (s *state) String() string {
 	been := map[*state]bool{}
-	s := n.string(been)
+	str := s.string(been)
 	//0x1400012c9c0
 	re, err := regexp.Compile(`0x.{11}`)
 	if err != nil {
 		panic(err)
 	}
-	pointers := re.FindAllString(s, -1)
+	pointers := re.FindAllString(str, -1)
 	replace := make([]string, 0, len(pointers)*2)
 	for i := range pointers {
 		replace = append(replace, pointers[i], strconv.Itoa(i))
 	}
-	return strings.NewReplacer(replace...).Replace(s)
+	return strings.NewReplacer(replace...).Replace(str)
+}
+
+func (n node) String() string {
+	buffer := bytes.Buffer{}
+	buffer.WriteString("isTerminal")
+	if n.isTerminal {
+		buffer.WriteString(" true")
+	} else {
+		buffer.WriteString(" false")
+	}
+	buffer.WriteByte('\n')
+	for i, s := range n.states {
+		buffer.WriteString(strconv.Itoa(i))
+		buffer.WriteByte(':')
+		buffer.WriteByte('\n')
+		buffer.WriteString(s.String())
+	}
+	return buffer.String()
 }
