@@ -149,8 +149,8 @@ func Test_newDFA(t *testing.T) {
 		{
 			name:        "recursive/intersection",
 			expressions: []string{"*.a", "b.c"},
-			accepted:    []string{"bc", "xxxxa", "yyyya", "a", "aaa", "axa", "bbbba"},
-			notAccepted: []string{"b", "c", "tt", "bcccc", "bbbbc"},
+			accepted:    []string{"bc", "xxxxa", "yyyya", "a", "aaa", "axa", "bbbba", "bcccc"},
+			notAccepted: []string{"b", "c", "tt", "bbbbc"},
 		},
 		//TODO escape
 		//TODO *.a #.a
@@ -178,10 +178,10 @@ func Test_newDFA(t *testing.T) {
 	}
 }
 
-func accepts(a *state, input string) bool {
+func accepts(a node, input string) bool {
 	for _, v := range input {
 		a = a.next(string(v))
-		if a == nil {
+		if len(a.states) == 0 {
 			return false
 		}
 		if a.isTerminal {
