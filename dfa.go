@@ -184,7 +184,7 @@ func (s *state) String() string {
 	return strings.NewReplacer(replace...).Replace(str)
 }
 
-func (n node) String() string {
+func (n *node) String() string {
 	buffer := bytes.Buffer{}
 	buffer.WriteString("isTerminal")
 	if n.isTerminal {
