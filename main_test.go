@@ -2,7 +2,6 @@ package jsonredact
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -206,7 +205,6 @@ func TestRedact(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
-			fmt.Println(redactor.automata)
 			assert.JSONEq(t, tt.want, redactor.Redact(tt.args.json))
 			assert.JSONEq(t, tt.want, redactor.Redact(tt.args.json), "reuse redactor with same result")
 		})
