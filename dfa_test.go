@@ -180,7 +180,7 @@ func Test_newDFA(t *testing.T) {
 
 func accepts(a node, input string) bool {
 	for _, v := range input {
-		a = a.next(string(v))
+		a = a.next(string(v), nil)
 		if len(a.states) == 0 {
 			return false
 		}
