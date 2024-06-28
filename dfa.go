@@ -39,19 +39,20 @@ func newDFA(expressions ...string) node {
 	return node{states: states}
 }
 
-func (n *node) next(input string) node {
-	states := make([]*state, 0, len(n.states))
+func (n *node) next(input string, buf []*state) node {
+	buf = buf[:0]
+	//states := make([]*state, 0, len(n.states))
 	var isTerminal bool
 	for _, s := range n.states {
 		nextState := s.next(input)
 		if nextState != nil {
-			states = append(states, nextState)
+			buf = append(buf, nextState)
 			if nextState.isTerminal {
 				isTerminal = true
 			}
 		}
 	}
-	return node{states: states, isTerminal: isTerminal}
+	return node{states: buf, isTerminal: isTerminal}
 }
 
 func (s *state) next(input string) *state {

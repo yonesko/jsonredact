@@ -42,6 +42,7 @@ func (r Redactor) redact(json string, automata node, buf *bytes.Buffer) {
 		_ = buf.WriteByte('{')
 	}
 	var index int
+	statesBuf := make([]*state, 0, 16)
 	root.ForEach(func(key, value gjson.Result) bool {
 		keyStr := key.Str
 		if root.IsArray() {
@@ -56,7 +57,7 @@ func (r Redactor) redact(json string, automata node, buf *bytes.Buffer) {
 			_ = buf.WriteByte(':')
 		}
 
-		next := automata.next(keyStr)
+		next := automata.next(keyStr, statesBuf)
 		if next.isTerminal {
 			_ = buf.WriteByte('"')
 			_, _ = buf.WriteString(r.handler(value.Raw))
