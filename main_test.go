@@ -142,6 +142,12 @@ func TestRedact(t *testing.T) {
 			want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
 		},
 		{
+			name: "escape/number in name",
+			args: args{json: `{ "0":232, "453":171, "4":406, "1":{"2":332, "3":946}, "5.6":122, "5.7":122}`,
+				keys: []string{`0`, `453`, `1.2`, `5\.6`}},
+			want: `{ "0":"REDACTED", "453":"REDACTED", "4":406, "1":{"2":"REDACTED", "3":946}, "5.6":"REDACTED", "5.7":122}`,
+		},
+		{
 			name: "wildcard/all array elements",
 			args: args{json: `{ "children": [ "Sara", "Alex", "Jack" ] }`, keys: []string{`children.#`}},
 			want: `{ "children": [ "REDACTED", "REDACTED", "REDACTED" ] }`,
