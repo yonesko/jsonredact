@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"math/rand/v2"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -199,4 +200,87 @@ func accepts(a node, input string) bool {
 		}
 	}
 	return false
+}
+
+func acceptsSilly(input string, expressions []string) bool {
+	for _, expr := range expressions {
+		if exprAccepts(input, expr) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func exprAccepts(input string, expression string) bool {
+	i, j := 0, 0
+	for ; i < len(input) && j < len(expression); j++ {
+		if expression[j] == '.' {
+			continue
+		}
+		if input[i] == expression[j] {
+			if i == len(input)-1 && j == len(expression)-1 {
+				return true
+			}
+			if j == len(expression)-1 {
+				return true
+			}
+			if i == len(input)-1 {
+				return false
+			}
+			i++
+			continue
+		} else {
+			return false
+		}
+	}
+	panic("end")
+}
+
+func TestRandom(t *testing.T) {
+	expressions := generateExpressions()
+	ndfa := newNDFA(expressions...)
+	for i := 0; i < 1000; i++ {
+		input := generateInput()
+		expected := acceptsSilly(input, expressions)
+		actual := accepts(ndfa, input)
+		if expected != actual {
+			fmt.Println(&ndfa)
+			fmt.Printf("input='%+v'\n", input)
+			fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
+			fmt.Printf("actual='%+v'\n", actual)
+			fmt.Printf("expected='%+v'\n", expected)
+			t.FailNow()
+		}
+	}
+}
+
+func generateExpressions() []string {
+	var expressions []string
+	for i := 0; i < rand.IntN(10)+1; i++ {
+		expressions = append(expressions, generateExpression())
+	}
+	return expressions
+}
+
+var letters = []rune("abcd")
+
+func generateExpression() string {
+	expr := ""
+	for i := 0; i < rand.IntN(10)+1; i++ {
+		v := string(letters[rand.IntN(len(letters))])
+		if i != 0 {
+			expr += "."
+		}
+		expr += v
+	}
+	return expr
+}
+
+func generateInput() string {
+	input := ""
+	for i := 0; i < rand.IntN(10)+1; i++ {
+		input += string(letters[rand.IntN(len(letters))])
+	}
+	return input
 }
