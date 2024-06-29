@@ -244,7 +244,7 @@ func TestRandom(t *testing.T) {
 	expressions := generateExpressions()
 	regex := buildRegex(expressions)
 	ndfa := newNDFA(expressions...)
-	for i := 0; i < 100e3; i++ {
+	for i := 0; i < 1e6; i++ {
 		input := generateInput()
 		expected := regex.MatchString(input)
 		actual := accepts(ndfa, input)
@@ -271,14 +271,15 @@ func generateExpression() string {
 	var letters = []rune("abcd#*")
 
 	expr := ""
-	for i := 0; i < rand.IntN(10)+1; i++ {
+	length := rand.IntN(10) + 1
+	for i := 0; i < length; i++ {
 		v := string(letters[rand.IntN(len(letters))])
 		if i != 0 {
 			expr += "."
 		}
 		expr += v
 		if v == "*" {
-			expr += "." + string(letters[rand.IntN(len(letters[:len(letters)-1]))])
+			expr += "." + string(letters[rand.IntN(len(letters)-1)])
 		}
 	}
 	return expr
@@ -292,4 +293,20 @@ func generateInput() string {
 		input += string(letters[rand.IntN(len(letters))])
 	}
 	return input
+}
+
+func Test(t *testing.T) {
+	/*
+		expressions='* | c | d | # | c'
+		Recovered in buildRecursive duplicate key c
+		input='dadcdbc'
+		expressions='a.#.*.b.*.b.d.d.*.b | *.a.b.#.b.b.#.c.b | d.a.*.c.d.#.c'
+		actual='false'
+		expected='true'
+	*/
+	ndfa := newNDFA("*.c.d.#.c")
+	fmt.Printf("ndfa='%+v'\n", ndfa)
+	input := "dadcdbc"
+	fmt.Println(accepts(ndfa, input))
+	fmt.Println(buildRegex([]string{"d.a.*.c.d.#.c"}).MatchString(input))
 }

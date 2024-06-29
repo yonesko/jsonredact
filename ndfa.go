@@ -121,7 +121,15 @@ func build(expressions []string) *state {
 // buildRecursive builds *state from recursive expression, (example *.a.b, *.a.*.b)
 func buildRecursive(expressions []string) *state {
 	root := newState()
-	if getNext(0, expressions) != "#" {
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
+	//		fmt.Println("Recovered in buildRecursive", r)
+	//		fmt.Printf("root='%+v'\n", root)
+	//		panic(r)
+	//	}
+	//}()
+	if getNextExpr(0, expressions) != "#" {
 		root.transitions["#"] = root
 	}
 	a := root
@@ -131,28 +139,28 @@ func buildRecursive(expressions []string) *state {
 			return root
 		}
 		next := newState()
-		nextExpr := getNext(i, expressions)
+		safeSet(a.transitions, expressions[i], next)
+		nextExpr := getNextExpr(i, expressions)
 		if i == len(expressions)-1 {
 			next.isTerminal = true
-		} else if i == 1 {
-			safeSet(next.transitions, expressions[i], next)
-			safeSet(next.transitions, "#", root)
-			//next.transitions[expressions[i]] = next
-			//next.transitions["#"] = root
-		} else if nextExpr != "#" {
-			safeSet(next.transitions, expressions[1], root.transitions[expressions[1]])
-			safeSet(next.transitions, "#", root)
+		} else {
+			if nextExpr != expressions[1] && nextExpr != "#" {
+				safeSet(next.transitions, expressions[1], root.transitions[expressions[1]])
+			}
+			if nextExpr != "#" {
+				safeSet(next.transitions, "#", root)
+			}
 			//next.transitions[expressions[1]] = root.transitions[expressions[1]]
 			//next.transitions["#"] = root
 		}
 		//a.transitions[expressions[i]] = next
-		safeSet(a.transitions, expressions[i], next)
+		//safeSet(a.transitions, expressions[i], next)
 		a = next
 	}
 	return root
 }
 
-func getNext(k int, expressions []string) string {
+func getNextExpr(k int, expressions []string) string {
 	for i := k + 1; i < len(expressions); i++ {
 		if expressions[i] != "*" {
 			return expressions[i]
@@ -208,7 +216,7 @@ func (s *state) String() string {
 	return strings.NewReplacer(replace...).Replace(str)
 }
 
-func (n *node) String() string {
+func (n node) String() string {
 	buffer := bytes.Buffer{}
 	buffer.WriteString("isTerminal")
 	if n.isTerminal {
