@@ -121,7 +121,9 @@ func build(expressions []string) *state {
 // buildRecursive builds *state from recursive expression, (example *.a.b, *.a.*.b)
 func buildRecursive(expressions []string) *state {
 	root := newState()
-	root.transitions["#"] = root
+	if getNext(0, expressions) != "#" {
+		root.transitions["#"] = root
+	}
 	a := root
 	for i := 1; i < len(expressions); i++ {
 		if len(expressions) > i+1 && expressions[i+1] == "*" {
@@ -129,19 +131,41 @@ func buildRecursive(expressions []string) *state {
 			return root
 		}
 		next := newState()
+		nextExpr := getNext(i, expressions)
 		if i == len(expressions)-1 {
 			next.isTerminal = true
 		} else if i == 1 {
-			next.transitions[expressions[i]] = next
-			next.transitions["#"] = root
-		} else {
-			next.transitions[expressions[1]] = root.transitions[expressions[1]]
-			next.transitions["#"] = root
+			safeSet(next.transitions, expressions[i], next)
+			safeSet(next.transitions, "#", root)
+			//next.transitions[expressions[i]] = next
+			//next.transitions["#"] = root
+		} else if nextExpr != "#" {
+			safeSet(next.transitions, expressions[1], root.transitions[expressions[1]])
+			safeSet(next.transitions, "#", root)
+			//next.transitions[expressions[1]] = root.transitions[expressions[1]]
+			//next.transitions["#"] = root
 		}
-		a.transitions[expressions[i]] = next
+		//a.transitions[expressions[i]] = next
+		safeSet(a.transitions, expressions[i], next)
 		a = next
 	}
 	return root
+}
+
+func getNext(k int, expressions []string) string {
+	for i := k + 1; i < len(expressions); i++ {
+		if expressions[i] != "*" {
+			return expressions[i]
+		}
+	}
+	return ""
+}
+
+func safeSet(m map[string]*state, k string, v *state) {
+	if _, ok := m[k]; ok {
+		panic("duplicate key " + k)
+	}
+	m[k] = v
 }
 
 func (s *state) string(been map[*state]bool) string {
