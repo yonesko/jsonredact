@@ -219,22 +219,13 @@ func exprAccepts(input string, expression string) bool {
 			continue
 		}
 		if input[i] == expression[j] {
-			if i == len(input)-1 && j == len(expression)-1 {
-				return true
-			}
-			if j == len(expression)-1 {
-				return true
-			}
-			if i == len(input)-1 {
-				return false
-			}
 			i++
 			continue
 		} else {
 			return false
 		}
 	}
-	panic("end")
+	return j == len(expression)
 }
 
 func TestRandom(t *testing.T) {
@@ -283,4 +274,8 @@ func generateInput() string {
 		input += string(letters[rand.IntN(len(letters))])
 	}
 	return input
+}
+
+func Test(t *testing.T) {
+	fmt.Println(exprAccepts("a", "a.a"))
 }
