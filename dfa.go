@@ -41,7 +41,6 @@ func newDFA(expressions ...string) node {
 
 func (n *node) next(input string, buf []*state) node {
 	buf = buf[:0]
-	//states := make([]*state, 0, len(n.states))
 	var isTerminal bool
 	for _, s := range n.states {
 		nextState := s.next(input)
