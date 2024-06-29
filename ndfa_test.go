@@ -229,9 +229,10 @@ func exprAccepts(input string, expression string) bool {
 }
 
 func TestRandom(t *testing.T) {
+	t.Parallel()
 	expressions := generateExpressions()
 	ndfa := newNDFA(expressions...)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		input := generateInput()
 		expected := acceptsSilly(input, expressions)
 		actual := accepts(ndfa, input)
