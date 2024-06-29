@@ -18,7 +18,7 @@ Use '*' to apply right expression to all object keys recursively.
 User '\' to escape control symbols above.
 */
 func NewRedactor(keySelectors []string, handler func(string) string) Redactor {
-	return Redactor{handler: handler, automata: newDFA(keySelectors...)}
+	return Redactor{handler: handler, automata: newNDFA(keySelectors...)}
 }
 
 func Redact(json string, keySelectors []string, handler func(string) string) string {

@@ -26,7 +26,7 @@ func newState() *state {
 	return &state{transitions: map[string]*state{}}
 }
 
-func newDFA(expressions ...string) node {
+func newNDFA(expressions ...string) node {
 	if len(expressions) == 0 {
 		return newNode()
 	}

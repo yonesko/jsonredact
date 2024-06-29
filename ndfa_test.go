@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func Test_newDFA(t *testing.T) {
+func Test_newNDFA(t *testing.T) {
 	tests := []struct {
 		name        string
 		expressions []string
@@ -172,16 +172,16 @@ func Test_newDFA(t *testing.T) {
 				rand.Shuffle(len(tt.expressions), func(i, j int) {
 					tt.expressions[i], tt.expressions[j] = tt.expressions[j], tt.expressions[i]
 				})
-				a := newDFA(tt.expressions...)
+				a := newNDFA(tt.expressions...)
 				once.Do(func() {
 					fmt.Println(tt.expressions)
 					fmt.Println(a)
 				})
 				for _, input := range tt.accepted {
-					require.True(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
+					require.True(t, accepts(a, input), "ndfa=%s input=%s", tt.expressions, input)
 				}
 				for _, input := range tt.notAccepted {
-					require.False(t, accepts(a, input), "dfa=%s input=%s", tt.expressions, input)
+					require.False(t, accepts(a, input), "ndfa=%s input=%s", tt.expressions, input)
 				}
 			}
 		})
