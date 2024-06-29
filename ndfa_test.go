@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"math/rand/v2"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -165,6 +166,18 @@ func Test_newNDFA(t *testing.T) {
 			accepted:    []string{"ab", "xab", "xabx", "ax", "ac", "acab"},
 			notAccepted: []string{"x", "a", "b", "ba", "bx"},
 		},
+		{
+			name:        "recursive/with wildcard",
+			expressions: []string{"*.c.d.#"},
+			accepted:    []string{"dcdc"},
+			notAccepted: []string{"cd", "c", "d", "cc"},
+		},
+		{
+			name:        "recursive/with wildcard",
+			expressions: []string{"*.#"},
+			accepted:    []string{generateInput(), generateInput(), generateInput()},
+			notAccepted: []string{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -176,7 +189,7 @@ func Test_newNDFA(t *testing.T) {
 				a := newNDFA(tt.expressions...)
 				once.Do(func() {
 					fmt.Println(tt.expressions)
-					fmt.Println(a)
+					fmt.Println(&a)
 				})
 				for _, input := range tt.accepted {
 					require.True(t, accepts(a, input), "ndfa=%s input=%s", tt.expressions, input)
@@ -202,42 +215,41 @@ func accepts(a node, input string) bool {
 	return false
 }
 
-func acceptsSilly(input string, expressions []string) bool {
-	for _, expr := range expressions {
-		if exprAccepts(input, expr) {
-			return true
-		}
+func buildRegex(expressions []string) *regexp.Regexp {
+	expr := make([]string, len(expressions))
+	for i := 0; i < len(expressions); i++ {
+		expr[i] = toRegex(expressions[i])
 	}
 
-	return false
+	compile, err := regexp.Compile(strings.Join(expr, "|"))
+	if err != nil {
+		panic(err)
+	}
+
+	return compile
 }
 
-func exprAccepts(input string, expression string) bool {
-	i, j := 0, 0
-	for ; i < len(input) && j < len(expression); j++ {
-		if expression[j] == '.' {
-			continue
-		}
-		if input[i] == expression[j] || expression[j] == '#' {
-			i++
-			continue
-		} else {
-			return false
-		}
+func toRegex(expression string) string {
+	if expression[0] != '*' {
+		expression = "^" + expression
 	}
-	return j == len(expression)
+	expression = strings.ReplaceAll(expression, ".", "")
+	expression = strings.ReplaceAll(expression, "#", ".")
+	expression = strings.ReplaceAll(expression, "*", ".*")
+	return expression
 }
 
 func TestRandom(t *testing.T) {
 	t.Parallel()
 	expressions := generateExpressions()
+	regex := buildRegex(expressions)
 	ndfa := newNDFA(expressions...)
 	for i := 0; i < 100e3; i++ {
 		input := generateInput()
-		expected := acceptsSilly(input, expressions)
+		expected := regex.MatchString(input)
 		actual := accepts(ndfa, input)
 		if expected != actual {
-			fmt.Println(&ndfa)
+			//fmt.Println(&ndfa)
 			fmt.Printf("input='%+v'\n", input)
 			fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
 			fmt.Printf("actual='%+v'\n", actual)
@@ -256,7 +268,7 @@ func generateExpressions() []string {
 }
 
 func generateExpression() string {
-	var letters = []rune("abcd#")
+	var letters = []rune("abcd#*")
 
 	expr := ""
 	for i := 0; i < rand.IntN(10)+1; i++ {
@@ -265,6 +277,9 @@ func generateExpression() string {
 			expr += "."
 		}
 		expr += v
+		if v == "*" {
+			expr += "." + string(letters[rand.IntN(len(letters[:len(letters)-1]))])
+		}
 	}
 	return expr
 }
@@ -277,8 +292,4 @@ func generateInput() string {
 		input += string(letters[rand.IntN(len(letters))])
 	}
 	return input
-}
-
-func Test(t *testing.T) {
-	fmt.Println(exprAccepts("a", "a.a"))
 }
