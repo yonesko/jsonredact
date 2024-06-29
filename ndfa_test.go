@@ -218,7 +218,7 @@ func exprAccepts(input string, expression string) bool {
 		if expression[j] == '.' {
 			continue
 		}
-		if input[i] == expression[j] {
+		if input[i] == expression[j] || expression[j] == '#' {
 			i++
 			continue
 		} else {
@@ -232,7 +232,7 @@ func TestRandom(t *testing.T) {
 	t.Parallel()
 	expressions := generateExpressions()
 	ndfa := newNDFA(expressions...)
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100e3; i++ {
 		input := generateInput()
 		expected := acceptsSilly(input, expressions)
 		actual := accepts(ndfa, input)
@@ -255,9 +255,9 @@ func generateExpressions() []string {
 	return expressions
 }
 
-var letters = []rune("abcd")
-
 func generateExpression() string {
+	var letters = []rune("abcd#")
+
 	expr := ""
 	for i := 0; i < rand.IntN(10)+1; i++ {
 		v := string(letters[rand.IntN(len(letters))])
@@ -270,6 +270,8 @@ func generateExpression() string {
 }
 
 func generateInput() string {
+	var letters = []rune("abcd")
+
 	input := ""
 	for i := 0; i < rand.IntN(10)+1; i++ {
 		input += string(letters[rand.IntN(len(letters))])
