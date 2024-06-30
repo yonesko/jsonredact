@@ -74,46 +74,6 @@ func (s *state) next(input string) (*state, *state) {
 	return s.nextByKey(input), s.transitions["#"]
 }
 
-//func merge(right, left *state, rightToAutomata map[*state]*state, leftToAutomata map[*state]*state) *state {
-//	commonKeys := make(map[string]bool, len(left.transitions)+len(right.transitions))
-//	automata := newState()
-//	for k := range left.transitions {
-//		if right.transitions[k] == nil {
-//			automata.transitions[k] = left.transitions[k]
-//		} else {
-//			commonKeys[k] = true
-//		}
-//	}
-//	for k := range right.transitions {
-//		if left.transitions[k] == nil {
-//			automata.transitions[k] = right.transitions[k]
-//		} else {
-//			commonKeys[k] = true
-//		}
-//	}
-//	rightToAutomata[right] = automata
-//	leftToAutomata[left] = automata
-//	for k := range commonKeys {
-//		r := right.next(k)
-//		l := left.next(k)
-//		if r.isTerminal {
-//			automata.transitions[k] = r
-//			continue
-//		}
-//		if l.isTerminal {
-//			automata.transitions[k] = l
-//			continue
-//		}
-//		//check recursion
-//		if rightToAutomata[r] != nil && rightToAutomata[r] == leftToAutomata[l] {
-//			automata.transitions[k] = rightToAutomata[r]
-//			continue
-//		}
-//		automata.transitions[k] = merge(r, l, rightToAutomata, leftToAutomata)
-//	}
-//	return automata
-//}
-
 func build(expressions []string) *state {
 	if len(expressions) == 0 {
 		return &state{isTerminal: true}
