@@ -30,7 +30,6 @@ func (r Redactor) Redact(json string) string {
 		return json
 	}
 	buffer := &lazyBuffer{originalJson: json}
-	//buffer.buf = bytes.NewBuffer(make([]byte, 0, len(json)))
 	r.redact(json, r.automata, buffer, 0)
 	return buffer.String()
 }
