@@ -87,6 +87,11 @@ func TestRedact(t *testing.T) {
 			want: `{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
 		},
 		{
+			name: "array/root array",
+			args: args{json: `[{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"0.a.1", "0.a.0"}},
+			want: `[{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}]`,
+		},
+		{
 			name: "array/with index in middle",
 			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.2.c", "a.2.d.e"}},
 			want: `{"a":[1,2,{"c":"REDACTED","d":{"e":"REDACTED"}}],"b":2}`,
@@ -280,7 +285,7 @@ func Benchmark(b *testing.B) {
 		}
 	})
 	b.Run("with matched keys", func(b *testing.B) {
-		redactor := NewRedactor([]string{"age", "fav.movie", "friends", "name.last"}, func(s string) string { return `REDACTED` })
+		redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = redactor.Redact(bigJson)
