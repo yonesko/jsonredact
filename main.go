@@ -14,7 +14,7 @@ type Redactor struct {
 /*
 User '.' as separator of objects and arrays.
 Use '#' as wildcard for any key or array index.
-Use '*' to apply right expression to all object keys recursively.
+Use '*' to apply right expression to all object keys recursively. (makes redactor walk the whole json)
 User '\' to escape control symbols above.
 */
 func NewRedactor(expressions []string, handler func(string) string) Redactor {

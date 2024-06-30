@@ -13,3 +13,6 @@ redactor := NewRedactor([]string{`a.b`, `c`}, func(s string) string {
 redactedJson := redactor.Redact(`{"a":{"b":"secret", "c":"Jack"}, "c":"secret"}`)
 //{"a":{"b":"REDACTED", "c":"Jack"}, "c":"REDACTED"}
 ```
+
+* Production tested
+* Don't waste your cpu and mem
