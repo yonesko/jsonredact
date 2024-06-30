@@ -29,12 +29,41 @@ func (r Redactor) Redact(json string) string {
 	if len(r.automata.states) == 0 {
 		return json
 	}
-	buffer := bytes.NewBuffer(make([]byte, 0, len(json)))
+	buffer := &lazyBuffer{originalJson: json}
 	r.redact(json, r.automata, buffer)
 	return buffer.String()
 }
 
-func (r Redactor) redact(json string, automata node, buf *bytes.Buffer) {
+type lazyBuffer struct {
+	buf          *bytes.Buffer
+	originalJson string
+	n            int
+}
+
+func (b *lazyBuffer) WriteByte(c byte) error {
+	b.n += 1
+	if b.buf == nil {
+		return nil
+	}
+	return b.buf.WriteByte(c)
+}
+
+func (b *lazyBuffer) WriteString(s string) (int, error) {
+	b.n += len(s)
+	if b.buf == nil {
+		return 0, nil
+	}
+	return b.buf.WriteString(s)
+}
+
+func (b *lazyBuffer) String() string {
+	if b.buf == nil {
+		return b.originalJson
+	}
+	return b.buf.String()
+}
+
+func (r Redactor) redact(json string, automata node, buf *lazyBuffer) {
 	root := gjson.Parse(json)
 	if root.IsArray() {
 		_ = buf.WriteByte('[')
@@ -59,6 +88,14 @@ func (r Redactor) redact(json string, automata node, buf *bytes.Buffer) {
 
 		next := automata.next(keyStr, statesBuf)
 		if next.isTerminal {
+			if buf.buf == nil {
+				buf.buf = bytes.NewBuffer(make([]byte, 0, len(json)))
+				n := buf.n
+				if buf.originalJson[n-1] == '{' {
+					n--
+				}
+				buf.buf.WriteString(buf.originalJson[:n])
+			}
 			_ = buf.WriteByte('"')
 			_, _ = buf.WriteString(r.handler(value.Raw))
 			_ = buf.WriteByte('"')
