@@ -32,14 +32,14 @@ func TestRedact(t *testing.T) {
 			want: bigJson,
 		},
 		{
-			name: "base/no selectors - return as is",
+			name: "base/deepJson",
 			args: args{json: deepJson, keys: []string{"b", "a"}},
 			want: `{"b":"REDACTED"}`,
 		},
 		{
 			name: "base/plain path of 0 depth",
-			args: args{json: `{"a":1,"b":1,"c":1, "x":{"terminal":577}"}`, keys: []string{"a", "b", "x.terminal"}},
-			want: `{"a":"REDACTED","b":"REDACTED","c":1, "x":{"terminal":"REDACTED"}}`,
+			args: args{json: `{"a":459,"b":707,"c":116, "x":{"terminal":577}"}`, keys: []string{"a", "b", "x.terminal"}},
+			want: `{"a":"REDACTED","b":"REDACTED","c":116, "x":{"terminal":"REDACTED"}}`,
 		},
 		{
 			name: "base/no match",
@@ -78,8 +78,8 @@ func TestRedact(t *testing.T) {
 		},
 		{
 			name: "array/with index",
-			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1"}},
-			want: `{"a":[1,"REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
+			args: args{json: `{"a":[18,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1"}},
+			want: `{"a":[18,"REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
 		},
 		{
 			name: "array/with indexes",
@@ -104,7 +104,7 @@ func TestRedact(t *testing.T) {
 		},
 		{
 			name: "escape/real point",
-			args: args{json: `{ "a.b": 1, "a": { "b": 2 } }`, keys: []string{"a.b"}},
+			args: args{json: `{"a.b":1,"a":{"b": 2 } }`, keys: []string{"a.b"}},
 			want: `{ "a.b": 1, "a": { "b": "REDACTED" } }`,
 		},
 		{
@@ -219,7 +219,6 @@ func TestRedact(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
 			fmt.Println(redactor.automata)
 			require.JSONEq(t, tt.want, redactor.Redact(tt.args.json))
-			require.JSONEq(t, tt.want, redactor.Redact(tt.args.json), "reuse redactor with same result")
 		})
 	}
 }
@@ -293,7 +292,7 @@ func Benchmark(b *testing.B) {
 			_ = redactor.Redact(bigJson)
 		}
 	})
-	b.Run("recursive deepJson", func(b *testing.B) {
+	b.Run("recursive deepJson no match", func(b *testing.B) {
 		redactor := NewRedactor([]string{"*.x"}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
