@@ -178,6 +178,12 @@ func Test_newNDFA(t *testing.T) {
 			accepted:    []string{generateInput(), generateInput(), generateInput()},
 			notAccepted: []string{},
 		},
+		{
+			name:        "recursive/with wildcard",
+			expressions: []string{"*.b.#.#.#.a"},
+			accepted:    []string{"bbbdca"},
+			notAccepted: []string{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -205,6 +211,10 @@ func Test_newNDFA(t *testing.T) {
 func accepts(a node, input string) bool {
 	for _, v := range input {
 		a = a.next(string(v), nil)
+		//fmt.Printf("a='%+v'\n", a)
+		//fmt.Printf("v='%+v'\n", string(v))
+		//fmt.Printf("i='%+v'\n", i)
+		//fmt.Println("---")
 		if len(a.states) == 0 {
 			return false
 		}
@@ -239,22 +249,25 @@ func toRegex(expression string) string {
 	return expression
 }
 
+// "*.#.b.*.a.a.#.c"
 func TestRandom(t *testing.T) {
 	t.Parallel()
-	expressions := generateExpressions()
-	regex := buildRegex(expressions)
-	ndfa := newNDFA(expressions...)
-	for i := 0; i < 1e6; i++ {
-		input := generateInput()
-		expected := regex.MatchString(input)
-		actual := accepts(ndfa, input)
-		if expected != actual {
-			//fmt.Println(&ndfa)
-			fmt.Printf("input='%+v'\n", input)
-			fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
-			fmt.Printf("actual='%+v'\n", actual)
-			fmt.Printf("expected='%+v'\n", expected)
-			t.FailNow()
+	for i := 0; i < 1e3; i++ {
+		expressions := generateExpressions()
+		regex := buildRegex(expressions)
+		ndfa := newNDFA(expressions...)
+		for j := 0; j < 10e3; j++ {
+			input := generateInput()
+			expected := regex.MatchString(input)
+			actual := accepts(ndfa, input)
+			if expected != actual {
+				//fmt.Println(&ndfa)
+				fmt.Printf("input='%+v'\n", input)
+				fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
+				fmt.Printf("actual='%+v'\n", actual)
+				fmt.Printf("expected='%+v'\n", expected)
+				t.FailNow()
+			}
 		}
 	}
 }
@@ -279,7 +292,7 @@ func generateExpression() string {
 		}
 		expr += v
 		if v == "*" {
-			expr += "." + string(letters[rand.IntN(len(letters)-1)])
+			expr += "." + string(letters[rand.IntN(len(letters)-2)])
 		}
 	}
 	return expr
@@ -297,16 +310,17 @@ func generateInput() string {
 
 func Test(t *testing.T) {
 	/*
-		expressions='* | c | d | # | c'
-		Recovered in buildRecursive duplicate key c
-		input='dadcdbc'
-		expressions='a.#.*.b.*.b.d.d.*.b | *.a.b.#.b.b.#.c.b | d.a.*.c.d.#.c'
+		input='dabaabc'
+		expressions='d.d.d.#.b.d | a.d.b.d.a | #.a.*.d.#.*.c.d.a.b.#.b | *.#.b.*.a.a.#.c'
 		actual='false'
 		expected='true'
 	*/
-	ndfa := newNDFA("*.c.d.#.c")
+	expressions := []string{"*.#.b.*.a.a.#.c"}
+	input := "dabaabc"
+	ndfa := newNDFA(expressions...)
 	fmt.Printf("ndfa='%+v'\n", ndfa)
-	input := "dadcdbc"
-	fmt.Println(accepts(ndfa, input))
-	fmt.Println(buildRegex([]string{"d.a.*.c.d.#.c"}).MatchString(input))
+	fmt.Println("actual", accepts(ndfa, input))
+	regex := buildRegex(expressions)
+	fmt.Printf("regex='%+v'\n", regex)
+	fmt.Println("expected", regex.MatchString(input))
 }
