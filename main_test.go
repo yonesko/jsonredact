@@ -257,7 +257,7 @@ Benchmark/recursive_bigJson-10             51096             23453 ns/op        
 Benchmark/recursive_deepJson_no_match-10  245776              4903 ns/op               0 B/op          0 allocs/op
 */
 func Benchmark(b *testing.B) {
-	b.Run("just unmarshal", func(b *testing.B) {
+	b.Run("bigJson/just unmarshal", func(b *testing.B) {
 		bytes := []byte(bigJson)
 		var m []any
 		err := json.Unmarshal(bytes, &m)
@@ -270,39 +270,51 @@ func Benchmark(b *testing.B) {
 			_ = json.Unmarshal(bytes, &m)
 		}
 	})
-	b.Run("empty selectors", func(b *testing.B) {
+	b.Run("bigJson/empty selectors", func(b *testing.B) {
 		redactor := NewRedactor([]string{}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = redactor.Redact(bigJson)
 		}
 	})
-	b.Run("without matched keys", func(b *testing.B) {
+	b.Run("bigJson/no match", func(b *testing.B) {
 		redactor := NewRedactor([]string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = redactor.Redact(bigJson)
 		}
 	})
-	b.Run("with matched keys", func(b *testing.B) {
+	b.Run("bigJson/recursive no match", func(b *testing.B) {
+		redactor := NewRedactor([]string{"*.x"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
+		}
+	})
+	b.Run("bigJson/match", func(b *testing.B) {
 		redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = redactor.Redact(bigJson)
 		}
 	})
-	b.Run("recursive bigJson", func(b *testing.B) {
-		redactor := NewRedactor([]string{"*.a"}, func(s string) string { return `REDACTED` })
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(bigJson)
-		}
-	})
-	b.Run("recursive deepJson no match", func(b *testing.B) {
+	b.Run("deepJson/recursive no match", func(b *testing.B) {
 		redactor := NewRedactor([]string{"*.x"}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = redactor.Redact(deepJson)
 		}
 	})
+	b.Run("deepJson/recursive match", func(b *testing.B) {
+		redactor := NewRedactor([]string{"b.a.b.b.a.b"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(deepJson)
+		}
+	})
+}
+
+func Test(t *testing.T) {
+	redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
+	_ = redactor.Redact(bigJson)
 }
