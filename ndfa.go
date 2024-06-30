@@ -60,16 +60,18 @@ func (n *node) next(input string, buf []*state) node {
 	return node{states: buf, isTerminal: isTerminal}
 }
 
+func (s *state) nextByKey(input string) *state {
+	if s.transitions[input] != nil {
+		return s.transitions[input]
+	}
+	if (input == "*" || input == "#") && s.transitions[`\`+input] != nil {
+		return s.transitions[`\`+input]
+	}
+	return nil
+}
+
 func (s *state) next(input string) (*state, *state) {
-	automata := s.transitions[input]
-	if automata != nil {
-		return automata, s.transitions["#"]
-	}
-	automata = s.transitions[`\`+input]
-	if (input == "*" || input == "#") && automata != nil {
-		return automata, s.transitions["#"]
-	}
-	return nil, s.transitions["#"]
+	return s.nextByKey(input), s.transitions["#"]
 }
 
 //func merge(right, left *state, rightToAutomata map[*state]*state, leftToAutomata map[*state]*state) *state {
@@ -164,21 +166,14 @@ func build(expressions []string) *state {
 //	return root
 //}
 
-func getNextExpr(k int, expressions []string) string {
-	for i := k + 1; i < len(expressions); i++ {
-		if expressions[i] != "*" {
-			return expressions[i]
-		}
-	}
-	return ""
-}
-
-func safeSet(m map[string]*state, k string, v *state) {
-	if _, ok := m[k]; ok {
-		panic("duplicate key " + k)
-	}
-	m[k] = v
-}
+//func getNextExpr(k int, expressions []string) string {
+//	for i := k + 1; i < len(expressions); i++ {
+//		if expressions[i] != "*" {
+//			return expressions[i]
+//		}
+//	}
+//	return ""
+//}
 
 func (s *state) string(been map[*state]bool) string {
 	buffer := bytes.Buffer{}
