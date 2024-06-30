@@ -43,10 +43,16 @@ func (n *node) next(input string, buf []*state) node {
 	buf = buf[:0]
 	var isTerminal bool
 	for _, s := range n.states {
-		nextState := s.next(input)
+		nextState, nextState2 := s.next(input)
 		if nextState != nil {
 			buf = append(buf, nextState)
 			if nextState.isTerminal {
+				isTerminal = true
+			}
+		}
+		if nextState2 != nil {
+			buf = append(buf, nextState2)
+			if nextState2.isTerminal {
 				isTerminal = true
 			}
 		}
@@ -54,57 +60,57 @@ func (n *node) next(input string, buf []*state) node {
 	return node{states: buf, isTerminal: isTerminal}
 }
 
-func (s *state) next(input string) *state {
+func (s *state) next(input string) (*state, *state) {
 	automata := s.transitions[input]
 	if automata != nil {
-		return automata
+		return automata, s.transitions["#"]
 	}
 	automata = s.transitions[`\`+input]
 	if (input == "*" || input == "#") && automata != nil {
-		return automata
+		return automata, s.transitions["#"]
 	}
-	return s.transitions["#"]
+	return nil, s.transitions["#"]
 }
 
-func merge(right, left *state, rightToAutomata map[*state]*state, leftToAutomata map[*state]*state) *state {
-	commonKeys := make(map[string]bool, len(left.transitions)+len(right.transitions))
-	automata := newState()
-	for k := range left.transitions {
-		if right.transitions[k] == nil {
-			automata.transitions[k] = left.transitions[k]
-		} else {
-			commonKeys[k] = true
-		}
-	}
-	for k := range right.transitions {
-		if left.transitions[k] == nil {
-			automata.transitions[k] = right.transitions[k]
-		} else {
-			commonKeys[k] = true
-		}
-	}
-	rightToAutomata[right] = automata
-	leftToAutomata[left] = automata
-	for k := range commonKeys {
-		r := right.next(k)
-		l := left.next(k)
-		if r.isTerminal {
-			automata.transitions[k] = r
-			continue
-		}
-		if l.isTerminal {
-			automata.transitions[k] = l
-			continue
-		}
-		//check recursion
-		if rightToAutomata[r] != nil && rightToAutomata[r] == leftToAutomata[l] {
-			automata.transitions[k] = rightToAutomata[r]
-			continue
-		}
-		automata.transitions[k] = merge(r, l, rightToAutomata, leftToAutomata)
-	}
-	return automata
-}
+//func merge(right, left *state, rightToAutomata map[*state]*state, leftToAutomata map[*state]*state) *state {
+//	commonKeys := make(map[string]bool, len(left.transitions)+len(right.transitions))
+//	automata := newState()
+//	for k := range left.transitions {
+//		if right.transitions[k] == nil {
+//			automata.transitions[k] = left.transitions[k]
+//		} else {
+//			commonKeys[k] = true
+//		}
+//	}
+//	for k := range right.transitions {
+//		if left.transitions[k] == nil {
+//			automata.transitions[k] = right.transitions[k]
+//		} else {
+//			commonKeys[k] = true
+//		}
+//	}
+//	rightToAutomata[right] = automata
+//	leftToAutomata[left] = automata
+//	for k := range commonKeys {
+//		r := right.next(k)
+//		l := left.next(k)
+//		if r.isTerminal {
+//			automata.transitions[k] = r
+//			continue
+//		}
+//		if l.isTerminal {
+//			automata.transitions[k] = l
+//			continue
+//		}
+//		//check recursion
+//		if rightToAutomata[r] != nil && rightToAutomata[r] == leftToAutomata[l] {
+//			automata.transitions[k] = rightToAutomata[r]
+//			continue
+//		}
+//		automata.transitions[k] = merge(r, l, rightToAutomata, leftToAutomata)
+//	}
+//	return automata
+//}
 
 func build(expressions []string) *state {
 	if len(expressions) == 0 {
@@ -112,53 +118,51 @@ func build(expressions []string) *state {
 	}
 	a := newState()
 	if expressions[0] == "*" {
-		return buildRecursive(expressions)
+		a.transitions["#"] = a
+		a.transitions[expressions[1]] = build(expressions[2:])
+		return a
 	}
 	a.transitions[expressions[0]] = build(expressions[1:])
 	return a
 }
 
 // buildRecursive builds *state from recursive expression, (example *.a.b, *.a.*.b)
-func buildRecursive(expressions []string) *state {
-	root := newState()
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
-	//		fmt.Println("Recovered in buildRecursive", r)
-	//		fmt.Printf("root='%+v'\n", root)
-	//		panic(r)
-	//	}
-	//}()
-	if getNextExpr(0, expressions) != "#" {
-		root.transitions["#"] = root
-	}
-	a := root
-	for i := 1; i < len(expressions); i++ {
-		if len(expressions) > i+1 && expressions[i+1] == "*" {
-			a.transitions[expressions[i]] = buildRecursive(expressions[i+1:])
-			return root
-		}
-		next := newState()
-		safeSet(a.transitions, expressions[i], next)
-		nextExpr := getNextExpr(i, expressions)
-		if i == len(expressions)-1 {
-			next.isTerminal = true
-		} else {
-			if nextExpr != expressions[1] && nextExpr != "#" {
-				safeSet(next.transitions, expressions[1], root.transitions[expressions[1]])
-			}
-			if nextExpr != "#" {
-				safeSet(next.transitions, "#", root)
-			}
-			//next.transitions[expressions[1]] = root.transitions[expressions[1]]
-			//next.transitions["#"] = root
-		}
-		//a.transitions[expressions[i]] = next
-		//safeSet(a.transitions, expressions[i], next)
-		a = next
-	}
-	return root
-}
+//func buildRecursive(expressions []string) *state {
+//	root := newState()
+//	//defer func() {
+//	//	if r := recover(); r != nil {
+//	//		fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
+//	//		fmt.Println("Recovered in buildRecursive", r)
+//	//		fmt.Printf("root='%+v'\n", root)
+//	//		panic(r)
+//	//	}
+//	//}()
+//	if getNextExpr(0, expressions) != "#" {
+//		root.transitions["#"] = root
+//	}
+//	a := root
+//	for i := 1; i < len(expressions); i++ {
+//		if len(expressions) > i+1 && expressions[i+1] == "*" {
+//			a.transitions[expressions[i]] = buildRecursive(expressions[i+1:])
+//			return root
+//		}
+//		next := newState()
+//		safeSet(a.transitions, expressions[i], next)
+//		nextExpr := getNextExpr(i, expressions)
+//		if i == len(expressions)-1 {
+//			next.isTerminal = true
+//		} else {
+//			if nextExpr != expressions[1] {
+//				safeSet(next.transitions, expressions[1], root.transitions[expressions[1]])
+//			}
+//			if nextExpr != "#" {
+//				safeSet(next.transitions, "#", root)
+//			}
+//		}
+//		a = next
+//	}
+//	return root
+//}
 
 func getNextExpr(k int, expressions []string) string {
 	for i := k + 1; i < len(expressions); i++ {
