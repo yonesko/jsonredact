@@ -128,53 +128,6 @@ func build(expressions []string) *state {
 	return a
 }
 
-// buildRecursive builds *state from recursive expression, (example *.a.b, *.a.*.b)
-//func buildRecursive(expressions []string) *state {
-//	root := newState()
-//	//defer func() {
-//	//	if r := recover(); r != nil {
-//	//		fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
-//	//		fmt.Println("Recovered in buildRecursive", r)
-//	//		fmt.Printf("root='%+v'\n", root)
-//	//		panic(r)
-//	//	}
-//	//}()
-//	if getNextExpr(0, expressions) != "#" {
-//		root.transitions["#"] = root
-//	}
-//	a := root
-//	for i := 1; i < len(expressions); i++ {
-//		if len(expressions) > i+1 && expressions[i+1] == "*" {
-//			a.transitions[expressions[i]] = buildRecursive(expressions[i+1:])
-//			return root
-//		}
-//		next := newState()
-//		safeSet(a.transitions, expressions[i], next)
-//		nextExpr := getNextExpr(i, expressions)
-//		if i == len(expressions)-1 {
-//			next.isTerminal = true
-//		} else {
-//			if nextExpr != expressions[1] {
-//				safeSet(next.transitions, expressions[1], root.transitions[expressions[1]])
-//			}
-//			if nextExpr != "#" {
-//				safeSet(next.transitions, "#", root)
-//			}
-//		}
-//		a = next
-//	}
-//	return root
-//}
-
-//func getNextExpr(k int, expressions []string) string {
-//	for i := k + 1; i < len(expressions); i++ {
-//		if expressions[i] != "*" {
-//			return expressions[i]
-//		}
-//	}
-//	return ""
-//}
-
 func (s *state) string(been map[*state]bool) string {
 	buffer := bytes.Buffer{}
 	if been[s] {
