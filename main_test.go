@@ -249,7 +249,7 @@ Benchmark/empty_selectors-10            570827163                2.089 ns/op    
 Benchmark/without_matched_keys-10         431738              2813 ns/op               0 B/op          0 allocs/op
 Benchmark/with_matched_keys-10            431204              2811 ns/op               0 B/op          0 allocs/op
 Benchmark/recursive_bigJson-10             51096             23453 ns/op               0 B/op          0 allocs/op
-Benchmark/recursive_deepJson_no_match-10                  245776              4903 ns/op               0 B/op          0 allocs/op
+Benchmark/recursive_deepJson_no_match-10  245776              4903 ns/op               0 B/op          0 allocs/op
 */
 func Benchmark(b *testing.B) {
 	b.Run("just unmarshal", func(b *testing.B) {
