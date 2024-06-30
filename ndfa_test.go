@@ -211,10 +211,6 @@ func Test_newNDFA(t *testing.T) {
 func accepts(a node, input string) bool {
 	for _, v := range input {
 		a = a.next(string(v), nil)
-		//fmt.Printf("a='%+v'\n", a)
-		//fmt.Printf("v='%+v'\n", string(v))
-		//fmt.Printf("i='%+v'\n", i)
-		//fmt.Println("---")
 		if len(a.states) == 0 {
 			return false
 		}
@@ -249,7 +245,6 @@ func toRegex(expression string) string {
 	return expression
 }
 
-// "*.#.b.*.a.a.#.c"
 func TestRandom(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < 1e3; i++ {
@@ -261,7 +256,6 @@ func TestRandom(t *testing.T) {
 			expected := regex.MatchString(input)
 			actual := accepts(ndfa, input)
 			if expected != actual {
-				//fmt.Println(&ndfa)
 				fmt.Printf("input='%+v'\n", input)
 				fmt.Printf("expressions='%+v'\n", strings.Join(expressions, " | "))
 				fmt.Printf("actual='%+v'\n", actual)
@@ -306,21 +300,4 @@ func generateInput() string {
 		input += string(letters[rand.IntN(len(letters))])
 	}
 	return input
-}
-
-func Test(t *testing.T) {
-	/*
-		input='dabaabc'
-		expressions='d.d.d.#.b.d | a.d.b.d.a | #.a.*.d.#.*.c.d.a.b.#.b | *.#.b.*.a.a.#.c'
-		actual='false'
-		expected='true'
-	*/
-	expressions := []string{"*.#.b.*.a.a.#.c"}
-	input := "dabaabc"
-	ndfa := newNDFA(expressions...)
-	fmt.Printf("ndfa='%+v'\n", ndfa)
-	fmt.Println("actual", accepts(ndfa, input))
-	regex := buildRegex(expressions)
-	fmt.Printf("regex='%+v'\n", regex)
-	fmt.Println("expected", regex.MatchString(input))
 }
