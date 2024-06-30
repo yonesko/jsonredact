@@ -17,12 +17,12 @@ Use '#' as wildcard for any key or array index.
 Use '*' to apply right expression to all object keys recursively.
 User '\' to escape control symbols above.
 */
-func NewRedactor(keySelectors []string, handler func(string) string) Redactor {
-	return Redactor{handler: handler, automata: newNDFA(keySelectors...)}
+func NewRedactor(expressions []string, handler func(string) string) Redactor {
+	return Redactor{handler: handler, automata: newNDFA(expressions...)}
 }
 
-func Redact(json string, keySelectors []string, handler func(string) string) string {
-	return NewRedactor(keySelectors, handler).Redact(json)
+func Redact(json string, expressions []string, handler func(string) string) string {
+	return NewRedactor(expressions, handler).Redact(json)
 }
 
 func (r Redactor) Redact(json string) string {
