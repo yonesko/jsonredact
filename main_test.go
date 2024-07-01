@@ -291,7 +291,7 @@ func Benchmark(b *testing.B) {
 			_ = redactor.Redact(bigJson)
 		}
 	})
-	b.Run("bigJson_match", func(b *testing.B) {
+	b.Run("bigJson/match", func(b *testing.B) {
 		redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -312,9 +312,4 @@ func Benchmark(b *testing.B) {
 			_ = redactor.Redact(deepJson)
 		}
 	})
-}
-
-func Test(t *testing.T) {
-	redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
-	_ = redactor.Redact(bigJson)
 }
