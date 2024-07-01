@@ -15,4 +15,4 @@ redactedJson := redactor.Redact(`{"a":{"b":"secret", "c":"Jack"}, "c":"secret"}`
 ```
 
 * Production tested
-* Don't waste your cpu and mem
+* Doesn't waste your cpu and mem
