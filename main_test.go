@@ -1,16 +1,22 @@
 package jsonredact
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/require"
+	"math"
+	"math/rand"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 var (
 	bigJson  = `[{"id":0,"name":"Elijah","city":"Austin","age":78,"friends":[{"name":"Michelle","hobbies":["Watching Sports","Reading","Skiing & Snowboarding"]},{"name":"Robert","hobbies":["Traveling","Video Games"]}]},{"id":1,"name":"Noah","city":"Boston","age":97,"friends":[{"name":"Oliver","hobbies":["Watching Sports","Skiing & Snowboarding","Collecting"]},{"name":"Olivia","hobbies":["Running","Music","Woodworking"]},{"name":"Robert","hobbies":["Woodworking","Calligraphy","Genealogy"]},{"name":"Ava","hobbies":["Walking","Church Activities"]},{"name":"Michael","hobbies":["Music","Church Activities"]},{"name":"Michael","hobbies":["Martial Arts","Painting","Jewelry Making"]}]},{"id":2,"name":"Evy","city":"San Diego","age":48,"friends":[{"name":"Joe","hobbies":["Reading","Volunteer Work"]},{"name":"Joe","hobbies":["Genealogy","Golf"]},{"name":"Oliver","hobbies":["Collecting","Writing","Bicycling"]},{"name":"Liam","hobbies":["Church Activities","Jewelry Making"]},{"name":"Amelia","hobbies":["Calligraphy","Dancing"]}]},{"id":3,"name":"Oliver","city":"St. Louis","age":39,"friends":[{"name":"Mateo","hobbies":["Watching Sports","Gardening"]},{"name":"Nora","hobbies":["Traveling","Team Sports"]},{"name":"Ava","hobbies":["Church Activities","Running"]},{"name":"Amelia","hobbies":["Gardening","Board Games","Watching Sports"]},{"name":"Leo","hobbies":["Martial Arts","Video Games","Reading"]}]},{"id":4,"name":"Michael","city":"St. Louis","age":95,"friends":[{"name":"Mateo","hobbies":["Movie Watching","Collecting"]},{"name":"Chris","hobbies":["Housework","Bicycling","Collecting"]}]},{"id":5,"name":"Michael","city":"Portland","age":19,"friends":[{"name":"Jack","hobbies":["Painting","Television"]},{"name":"Oliver","hobbies":["Walking","Watching Sports","Movie Watching"]},{"name":"Charlotte","hobbies":["Podcasts","Jewelry Making"]},{"name":"Elijah","hobbies":["Eating Out","Painting"]}]},{"id":6,"name":"Lucas","city":"Austin","age":76,"friends":[{"name":"John","hobbies":["Genealogy","Cooking"]},{"name":"John","hobbies":["Socializing","Yoga"]}]},{"id":7,"name":"Michelle","city":"San Antonio","age":25,"friends":[{"name":"Jack","hobbies":["Music","Golf"]},{"name":"Daniel","hobbies":["Socializing","Housework","Walking"]},{"name":"Robert","hobbies":["Collecting","Walking"]},{"name":"Nora","hobbies":["Painting","Church Activities"]},{"name":"Mia","hobbies":["Running","Painting"]}]},{"id":8,"name":"Emily","city":"Austin","age":61,"friends":[{"name":"Nora","hobbies":["Bicycling","Skiing & Snowboarding","Watching Sports"]},{"name":"Ava","hobbies":["Writing","Reading","Collecting"]},{"name":"Amelia","hobbies":["Eating Out","Watching Sports"]},{"name":"Daniel","hobbies":["Skiing & Snowboarding","Martial Arts","Writing"]},{"name":"Zoey","hobbies":["Board Games","Tennis"]}]},{"id":9,"name":"Liam","city":"New Orleans","age":33,"friends":[{"name":"Chloe","hobbies":["Traveling","Bicycling","Shopping"]},{"name":"Evy","hobbies":["Eating Out","Watching Sports"]},{"name":"Grace","hobbies":["Jewelry Making","Yoga","Podcasts"]}]}]`
 	deepJson = `{"b":{"a":{"b":{"b":{"a":{"b":{"b":{"a":{"b":{"b":{"a":{"b":{"b":{"a":{"b":{"b":{"a":{"b":{"b":{"a":{"b":{"b":{"a":{"b":{"b":{"a":{"b":935}}}}}}}}}}}}}}}}}}}}}}}}}}}`
+	handler  = func(s string) string { return `REDACTED` }
+	random   = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 func TestRedact(t *testing.T) {
@@ -18,14 +24,16 @@ func TestRedact(t *testing.T) {
 		json string
 		keys []string
 	}
-	handler := func(s string) string {
-		return `REDACTED`
-	}
 	tests := []struct {
 		name string
 		args args
 		want string
 	}{
+		{
+			name: "base/non json - return as is",
+			args: args{json: "ynbtrvcew98hguibrfd", keys: []string{"b", "a"}},
+			want: "ynbtrvcew98hguibrfd",
+		},
 		{
 			name: "base/no selectors - return as is",
 			args: args{json: bigJson},
@@ -230,9 +238,7 @@ func TestRedact(t *testing.T) {
 
 func TestConcurrent(t *testing.T) {
 	waitGroup := sync.WaitGroup{}
-	redactor := NewRedactor([]string{`*.name`}, func(s string) string {
-		return "REDACTED"
-	})
+	redactor := NewRedactor([]string{`*.name`}, handler)
 	for i := 0; i < 1000; i++ {
 		waitGroup.Add(1)
 		go func() {
@@ -246,70 +252,64 @@ func TestConcurrent(t *testing.T) {
 	waitGroup.Wait()
 }
 
+func Test(t *testing.T) {
+	h := func(s string) string { return `` }
+	output := NewRedactor([]string{`a.b.f`}, h).Redact(`{ "a": {"b":{"name":"d","f":5}, "name":"b" }}`)
+	fmt.Println(output)
+	//{ "a": {"b":{"name":"d","f":""},"name":"b"}}
+}
+
 /*
 goos: darwin
 goarch: arm64
-Benchmark/just_unmarshal-10                32270             36379 ns/op           27976 B/op        747 allocs/op
-Benchmark/empty_selectors-10            570827163                2.089 ns/op           0 B/op          0 allocs/op
-Benchmark/without_matched_keys-10         431738              2813 ns/op               0 B/op          0 allocs/op
-Benchmark/with_matched_keys-10            431204              2811 ns/op               0 B/op          0 allocs/op
-Benchmark/recursive_bigJson-10             51096             23453 ns/op               0 B/op          0 allocs/op
-Benchmark/recursive_deepJson_no_match-10  245776              4903 ns/op               0 B/op          0 allocs/op
+cpu: Apple M1
+Benchmark/complexity/1-8        15272268                78.14 ns/op            0 B/op          0 allocs/op
+Benchmark/complexity/10-8        2192635               545.9 ns/op             0 B/op          0 allocs/op
+Benchmark/complexity/100-8        185149              6397 ns/op               0 B/op          0 allocs/op
+Benchmark/complexity/1000-8        15116             79228 ns/op               0 B/op          0 allocs/op
+Benchmark/complexity/10000-8        1408            844426 ns/op               0 B/op          0 allocs/op
 */
 func Benchmark(b *testing.B) {
-	b.Run("bigJson/just unmarshal", func(b *testing.B) {
-		bytes := []byte(bigJson)
-		var m []any
-		err := json.Unmarshal(bytes, &m)
-		if err != nil {
-			b.Fatal(err)
-		}
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			var m []any
-			_ = json.Unmarshal(bytes, &m)
-		}
-	})
-	b.Run("bigJson/empty selectors", func(b *testing.B) {
-		redactor := NewRedactor([]string{}, func(s string) string { return `REDACTED` })
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(bigJson)
+	b.ReportAllocs()
+	b.Run("complexity", func(b *testing.B) {
+		redactor := NewRedactor([]string{"*.nomatch"}, handler)
+		for n := range 5 {
+			size := int(math.Pow10(n))
+			input := generateJSON(size)
+			b.Run(strconv.Itoa(size), func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					_ = redactor.Redact(input)
+				}
+			})
 		}
 	})
-	b.Run("bigJson/no match", func(b *testing.B) {
-		redactor := NewRedactor([]string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `REDACTED` })
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(bigJson)
+}
+
+func generateJSON(keysNum int) string {
+	strBuilder := strings.Builder{}
+	strBuilder.WriteByte('{')
+	for i := range keysNum {
+		strBuilder.WriteByte('"')
+		strBuilder.WriteString(stringRandom(5))
+		strBuilder.WriteByte('"')
+		strBuilder.WriteByte(':')
+		strBuilder.WriteByte('"')
+		strBuilder.WriteString(stringRandom(10))
+		strBuilder.WriteByte('"')
+		if i != keysNum-1 {
+			strBuilder.WriteByte(',')
 		}
-	})
-	b.Run("bigJson/recursive no match", func(b *testing.B) {
-		redactor := NewRedactor([]string{"*.x"}, func(s string) string { return `REDACTED` })
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(bigJson)
-		}
-	})
-	b.Run("bigJson/match", func(b *testing.B) {
-		redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(bigJson)
-		}
-	})
-	b.Run("deepJson/recursive no match", func(b *testing.B) {
-		redactor := NewRedactor([]string{"*.x"}, func(s string) string { return `REDACTED` })
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(deepJson)
-		}
-	})
-	b.Run("deepJson/recursive match", func(b *testing.B) {
-		redactor := NewRedactor([]string{"b.a.b.b.a.b"}, func(s string) string { return `REDACTED` })
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(deepJson)
-		}
-	})
+	}
+	strBuilder.WriteByte('}')
+	return strBuilder.String()
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func stringRandom(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[random.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
