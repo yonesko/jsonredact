@@ -263,13 +263,83 @@ func TestConcurrent(t *testing.T) {
 goos: darwin
 goarch: arm64
 cpu: Apple M1
+Benchmark/bigJson/just_unmarshal-8                 32901             34930 ns/op           27976 B/op        747 allocs/op
+Benchmark/bigJson/empty_selectors-8             583078690                2.063 ns/op           0 B/op          0 allocs/op
+Benchmark/bigJson/no_match-8                      425163              2814 ns/op               0 B/op          0 allocs/op
+Benchmark/bigJson/recursive_no_match-8             51840             23134 ns/op               0 B/op          0 allocs/op
+Benchmark/bigJson/match-8                         223062              5282 ns/op           12336 B/op          4 allocs/op
+Benchmark/deepJson/recursive_no_match-8           241185              4947 ns/op               0 B/op          0 allocs/op
+Benchmark/deepJson/recursive_match-8              775084              1511 ns/op             272 B/op          3 allocs/op
+*/
+func Benchmark(b *testing.B) {
+	b.Run("bigJson/just unmarshal", func(b *testing.B) {
+		bytes := []byte(bigJson)
+		var m []any
+		err := json.Unmarshal(bytes, &m)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var m []any
+			_ = json.Unmarshal(bytes, &m)
+		}
+	})
+	b.Run("bigJson/empty selectors", func(b *testing.B) {
+		redactor := NewRedactor([]string{}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
+		}
+	})
+	b.Run("bigJson/no match", func(b *testing.B) {
+		redactor := NewRedactor([]string{"age1", "fav1.movie", "1friends", "1name.last"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
+		}
+	})
+	b.Run("bigJson/recursive no match", func(b *testing.B) {
+		redactor := NewRedactor([]string{"*.x"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
+		}
+	})
+	b.Run("bigJson/match", func(b *testing.B) {
+		redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(bigJson)
+		}
+	})
+	b.Run("deepJson/recursive no match", func(b *testing.B) {
+		redactor := NewRedactor([]string{"*.x"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(deepJson)
+		}
+	})
+	b.Run("deepJson/recursive match", func(b *testing.B) {
+		redactor := NewRedactor([]string{"b.a.b.b.a.b"}, func(s string) string { return `REDACTED` })
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = redactor.Redact(deepJson)
+		}
+	})
+}
+
+/*
+goos: darwin
+goarch: arm64
+cpu: Apple M1
 Benchmark/complexity/1-8        15272268                78.14 ns/op            0 B/op          0 allocs/op
 Benchmark/complexity/10-8        2192635               545.9 ns/op             0 B/op          0 allocs/op
 Benchmark/complexity/100-8        185149              6397 ns/op               0 B/op          0 allocs/op
 Benchmark/complexity/1000-8        15116             79228 ns/op               0 B/op          0 allocs/op
 Benchmark/complexity/10000-8        1408            844426 ns/op               0 B/op          0 allocs/op
 */
-func Benchmark(b *testing.B) {
+func BenchmarkComplexity(b *testing.B) {
 	b.ReportAllocs()
 	b.Run("complexity", func(b *testing.B) {
 		redactor := NewRedactor([]string{"*.nomatch"}, handler)

@@ -60,7 +60,7 @@ User `\` to escape control symbols above.
 
 Redactor operates like a regex - it compiles expressions into automata once (constructor NewRedactor) then runs jsons
 against it. So complexity is
-O(n), where n is size of the input.
+`O(n)`, where n is size of the input.
 
 Here benchmark complexity/n, where n is number of keys of flat json.
 
@@ -76,3 +76,8 @@ Benchmark/complexity/10000-8        1408            844426 ns/op               0
 ```
 
 Redactor doesn't traverse all the json until it told so using `*` wildcard.
+
+Redactor is optimised for real production environments, where logs can be large and few of them match.
+
+When there is no
+match redactor just returns original json with **zero allocations**.
