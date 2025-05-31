@@ -2,7 +2,6 @@ package jsonredact
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math/rand/v2"
 	"regexp"
 	"strings"
@@ -198,10 +197,14 @@ func Test_newNDFA(t *testing.T) {
 					fmt.Println(&a)
 				})
 				for _, input := range tt.accepted {
-					require.True(t, accepts(a, input), "ndfa=%s input=%s", tt.expressions, input)
+					if !accepts(a, input) {
+						t.Fatalf("ndfa=%s input=%s", tt.expressions, input)
+					}
 				}
 				for _, input := range tt.notAccepted {
-					require.False(t, accepts(a, input), "ndfa=%s input=%s", tt.expressions, input)
+					if accepts(a, input) {
+						t.Fatalf("ndfa=%s input=%s", tt.expressions, input)
+					}
 				}
 			}
 		})

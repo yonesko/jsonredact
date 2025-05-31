@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math"
 	"math/rand"
 	"strconv"
@@ -238,7 +237,9 @@ func TestRedact(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
 			fmt.Println(redactor.automata)
-			require.Equal(t, indentIfJSONString(tt.want), indentIfJSONString(redactor.Redact(tt.args.json)))
+			if indentIfJSONString(tt.want) != indentIfJSONString(redactor.Redact(tt.args.json)) {
+				t.Fail()
+			}
 		})
 	}
 }
