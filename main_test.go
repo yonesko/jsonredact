@@ -1,6 +1,8 @@
 package jsonredact
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"math"
@@ -188,6 +190,11 @@ func TestRedact(t *testing.T) {
 			want: `{ "a": {"a":"REDACTED"}, "name":"b" }`,
 		},
 		{
+			name: "wildcard/all fields of an object",
+			args: args{json: `{ "a": {"a":1,"b":"i am b", "d":{"c":56}}, "name":"b" }`, keys: []string{`a.#.c`}},
+			want: `{ "a": {"a":1,"b":"i am b", "d":{"c":"REDACTED"}}, "name":"b" }`,
+		},
+		{
 			name: "recursive/one field",
 			args: args{json: `{"a": 1}`, keys: []string{`*.a`}},
 			want: `{"a": "REDACTED"}`,
@@ -231,7 +238,7 @@ func TestRedact(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
 			fmt.Println(redactor.automata)
-			require.JSONEq(t, tt.want, redactor.Redact(tt.args.json))
+			require.Equal(t, indentIfJSONString(tt.want), indentIfJSONString(redactor.Redact(tt.args.json)))
 		})
 	}
 }
@@ -250,13 +257,6 @@ func TestConcurrent(t *testing.T) {
 	}
 
 	waitGroup.Wait()
-}
-
-func Test(t *testing.T) {
-	h := func(s string) string { return `` }
-	output := NewRedactor([]string{`a.b.f`}, h).Redact(`{ "a": {"b":{"name":"d","f":5}, "name":"b" }}`)
-	fmt.Println(output)
-	//{ "a": {"b":{"name":"d","f":""},"name":"b"}}
 }
 
 /*
@@ -312,4 +312,14 @@ func stringRandom(n int) string {
 		b[i] = letterBytes[random.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+func indentIfJSONString(input string) string {
+	var out bytes.Buffer
+	err := json.Indent(&out, []byte(input), "", "  ")
+	if err != nil {
+		return input // not valid JSON, return original string
+	}
+
+	return out.String()
 }
