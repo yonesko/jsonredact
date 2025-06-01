@@ -393,3 +393,11 @@ func indentIfJSONString(input string) string {
 
 	return out.String()
 }
+
+func Test_redact2(t *testing.T) {
+	input := `{"a":{"b":{"c":1, "d":{"f":1} }},"b":1,"c":1}`
+	result := NewRedactor([]string{"a.b.c"}, func(s string) string { return `REDACTED` }).
+		Redact2(input)
+	fmt.Println("input ", input)
+	fmt.Println("result", result)
+}

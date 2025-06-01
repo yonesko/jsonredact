@@ -30,9 +30,25 @@ func (r Redactor) Redact(json string) string {
 	return buffer.String()
 }
 
+func (r Redactor) Redact2(json string) string {
+	if len(r.automata.states) == 0 {
+		return json
+	}
+	buffer := &lazyBuffer{originalJson: json}
+	r.redact2(json, r.automata, buffer, 0)
+	return buffer.String()
+}
+
 type lazyBuffer struct {
-	buf          *bytes.Buffer
-	originalJson string
+	buf           *bytes.Buffer
+	originalJson  string
+	originalIndex int
+}
+
+func (b *lazyBuffer) init() {
+	if b.buf == nil {
+		b.buf = bytes.NewBuffer(make([]byte, 0, len(b.originalJson)))
+	}
 }
 
 func (b *lazyBuffer) WriteByte(c byte) error {
@@ -101,4 +117,8 @@ func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int
 	} else {
 		_ = buf.WriteByte('}')
 	}
+}
+
+func (r Redactor) redact2(json string, automata node, buf *lazyBuffer, offset int) {
+	redactWithParser(json, automata, buf)
 }

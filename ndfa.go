@@ -39,7 +39,7 @@ func newNDFA(expressions ...string) node {
 	return node{states: states}
 }
 
-func (n *node) next(input string, buf []*state) node {
+func (n node) next(input string, buf []*state) node {
 	buf = buf[:0]
 	var isTerminal bool
 	for _, s := range n.states {
