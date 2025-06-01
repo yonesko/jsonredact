@@ -310,7 +310,7 @@ func Benchmark(b *testing.B) {
 		redactor := NewRedactor([]string{"0.name", "1.city", "2.age"}, func(s string) string { return `REDACTED` })
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = redactor.Redact(bigJson)
+			_ = redactor.Redact2(bigJson)
 		}
 	})
 	b.Run("deepJson/recursive no match", func(b *testing.B) {
@@ -348,7 +348,7 @@ func BenchmarkComplexity(b *testing.B) {
 			input := generateJSON(size)
 			b.Run(strconv.Itoa(size), func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
-					_ = redactor.Redact(input)
+					_ = redactor.Redact2(input)
 				}
 			})
 		}
