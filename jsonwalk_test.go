@@ -1,7 +1,7 @@
 package jsonredact
 
 import (
-	"fmt"
+	"github.com/antlr4-go/antlr/v4"
 	"testing"
 )
 
@@ -9,7 +9,6 @@ type printingListener struct {
 }
 
 func (p printingListener) EnterMember(ctx memberContext) {
-	fmt.Println("EnterMember", ctx.key)
 }
 
 func (p printingListener) ExitMember(ctx memberContext) {
@@ -27,4 +26,17 @@ func (p printingListener) ExitObject(ctx objectContext) {
 
 func Test(t *testing.T) {
 	jsonWalk(`{"a":{"b":{"c":{"d":{}}}}}`, printingListener{})
+}
+
+func Benchmark_walkers(b *testing.B) {
+	b.Run("my", func(b *testing.B) {
+		jsonWalk(deepJson, printingListener{})
+	})
+	b.Run("antlr", func(b *testing.B) {
+		lexer := NewJSONLexer(antlr.NewInputStream(deepJson))
+		stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+		parser := NewJSONParser(stream)
+		tree := parser.Json()
+		antlr.ParseTreeWalkerDefault.Walk(&BaseJSONListener{}, tree)
+	})
 }
