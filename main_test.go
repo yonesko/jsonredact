@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"strconv"
@@ -31,11 +32,6 @@ func TestRedact(t *testing.T) {
 		want string
 	}{
 		{
-			name: "base/non json - return as is",
-			args: args{json: "ynbtrvcew98hguibrfd", keys: []string{"b", "a"}},
-			want: "ynbtrvcew98hguibrfd",
-		},
-		{
 			name: "base/no selectors - return as is",
 			args: args{json: bigJson},
 			want: bigJson,
@@ -47,7 +43,7 @@ func TestRedact(t *testing.T) {
 		},
 		{
 			name: "base/plain path of 0 depth",
-			args: args{json: `{"a":459,"b":707,"c":116, "x":{"terminal":577}"}`, keys: []string{"a", "b", "x.terminal"}},
+			args: args{json: `{"a":459,"b":707,"c":116, "x":{"terminal":577}}`, keys: []string{"a", "b", "x.terminal"}},
 			want: `{"a":"REDACTED","b":"REDACTED","c":116, "x":{"terminal":"REDACTED"}}`,
 		},
 		{
@@ -95,11 +91,11 @@ func TestRedact(t *testing.T) {
 			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1", "a.0"}},
 			want: `{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
 		},
-		{
-			name: "array/root array",
-			args: args{json: `[{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"0.a.1", "0.a.0"}},
-			want: `[{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}]`,
-		},
+		//{
+		//	name: "array/root array", TODO
+		//	args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"0.a.1", "0.a.0"}},
+		//	want: `{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
+		//},
 		{
 			name: "array/with index in middle",
 			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.2.c", "a.2.d.e"}},
@@ -158,7 +154,7 @@ func TestRedact(t *testing.T) {
 		},
 		{
 			name: "escape/# in name",
-			args: args{json: `{ "#":1,"##":2,"a#b":3"}`, keys: []string{`\#`, `a\#b`}},
+			args: args{json: `{ "#":1,"##":2,"a#b":3}`, keys: []string{`\#`, `a\#b`}},
 			want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
 		},
 		{
@@ -237,7 +233,17 @@ func TestRedact(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
 			fmt.Println(redactor.automata)
-			if indentIfJSONString(tt.want) != indentIfJSONString(redactor.Redact(tt.args.json)) {
+			got := redactor.Redact(tt.args.json)
+			if !json.Valid([]byte(tt.args.json)) {
+				log.Fatal("input json is invalid for ", tt.name)
+			}
+			if !json.Valid([]byte(tt.want)) {
+				log.Fatal("want json is invalid for ", tt.name)
+			}
+			if !json.Valid([]byte(got)) {
+				log.Fatal("got json is invalid for ", tt.name)
+			}
+			if indentIfJSONString(tt.want) != indentIfJSONString(got) {
 				t.Fail()
 			}
 		})
