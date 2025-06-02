@@ -237,8 +237,9 @@ func TestRedact(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
 			fmt.Println(redactor.automata)
-			if indentIfJSONString(tt.want) != indentIfJSONString(redactor.Redact(tt.args.json)) {
-				t.Fail()
+			got := indentIfJSONString(redactor.Redact(tt.args.json))
+			if indentIfJSONString(tt.want) != got {
+				t.Fatalf("want:\n%s\ngot:\n%s\n", indentIfJSONString(tt.want), got)
 			}
 		})
 	}

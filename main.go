@@ -2,6 +2,7 @@ package jsonredact
 
 import (
 	"bytes"
+	"container/list"
 	"github.com/tidwall/gjson"
 	"strconv"
 )
@@ -56,7 +57,93 @@ func (b *lazyBuffer) String() string {
 	return b.buf.String()
 }
 
+const (
+	matchingStateRedact int = iota
+	matchingStateSkip   int = iota
+	matchingStateVisit  int = iota
+)
+
+type redactingListener struct {
+	noopListener
+	automata          node
+	buf               *lazyBuffer
+	matchingState     int
+	nodes             list.List
+	handler           func(string) string
+	statesBuf         []*state
+	depth             int
+	lastMatchingDepth int
+}
+
+func (r *redactingListener) EnterMemberKey(ctx memberContext) {
+	if r.matchingState != matchingStateVisit {
+		return
+	}
+	if ctx.index != 0 {
+		r.buf.WriteByte(',')
+	}
+}
+func (r *redactingListener) ExitMemberKey(ctx memberContext) {
+	if r.matchingState != matchingStateVisit {
+		return
+	}
+	r.buf.WriteString(ctx.key)
+	r.buf.WriteByte(':')
+	//match
+	next := r.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
+	if next.isTerminal {
+		r.matchingState = matchingStateRedact
+		r.lastMatchingDepth = r.depth
+		return
+	}
+	if len(next.states) == 0 {
+		r.matchingState = matchingStateSkip
+		r.lastMatchingDepth = r.depth
+		return
+	}
+	r.matchingState = matchingStateVisit
+}
+
+func (r *redactingListener) ExitMemberValue(ctx memberContext) {
+	if r.matchingState != matchingStateVisit && r.depth != r.lastMatchingDepth {
+		return
+	}
+	var value string
+	switch r.matchingState {
+	case matchingStateSkip:
+		value = ctx.value
+	case matchingStateRedact:
+		value = r.handler(ctx.value)
+	case matchingStateVisit:
+		return
+	}
+	r.buf.WriteString(value)
+	r.matchingState = matchingStateVisit
+	r.lastMatchingDepth = -1
+}
+
+func (r *redactingListener) EnterObject(ctx objectContext) {
+	r.depth++
+	if r.matchingState != matchingStateVisit {
+		return
+	}
+	r.buf.WriteByte('{')
+}
+
+func (r *redactingListener) ExitObject(ctx objectContext) {
+	r.depth--
+	if r.matchingState != matchingStateVisit {
+		return
+	}
+	r.buf.WriteByte('{')
+}
+
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
+	jsonWalk(json, &redactingListener{automata: automata, buf: buf,
+		statesBuf: make([]*state, 0, 16)})
+}
+
+func (r Redactor) redactOld(json string, automata node, buf *lazyBuffer, offset int) {
 	root := gjson.Parse(json)
 	if root.IsArray() {
 		_ = buf.WriteByte('[')

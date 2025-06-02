@@ -6,13 +6,14 @@ import (
 )
 
 type printingListener struct {
+	noopListener
 }
 
-func (p printingListener) EnterMember(ctx memberContext) {
-	fmt.Println("EnterMember", ctx.key)
+func (p printingListener) EnterMemberKey(ctx memberContext) {
+	fmt.Println("EnterMemberKey", ctx.key)
 }
 
-func (p printingListener) ExitMember(ctx memberContext) {
+func (p printingListener) ExitMemberValue(ctx memberContext) {
 	//TODO implement me
 	panic("implement me")
 }
