@@ -4,11 +4,17 @@ import (
 	"fmt"
 )
 
+const (
+	valueTypeUndefined int = iota
+	valueTypeObject    int = iota
+)
+
 type memberContext struct {
 	//raw
 	key string
 	//raw
-	value string
+	value     string
+	valueType int
 	//member's index in object
 	index int
 }
@@ -38,7 +44,7 @@ func (n noopListener) ExitObject(ctx objectContext) {
 }
 
 type listener interface {
-	EnterMemberKey(ctx memberContext)
+	//EnterMemberKey(ctx memberContext)
 	ExitMemberValue(ctx memberContext)
 
 	EnterMemberValue(ctx memberContext)
@@ -48,21 +54,15 @@ type listener interface {
 	ExitObject(ctx objectContext)
 }
 
-const (
-	stateElement int = iota
-	stateObject  int = iota
-	stateKey     int = iota
-	statePair    int = iota
-)
-
 type traverseCtx struct {
 	runeIndex     int
 	input         []rune
 	err           error
 	lastMemberKey string
+	l             listener
 }
 
-func (ctx traverseCtx) assertNotEmpty() bool {
+func (ctx *traverseCtx) assertNotEmpty() bool {
 	if len(ctx.input[ctx.runeIndex:]) == 0 {
 		ctx.err = fmt.Errorf("unexpected end of input at %d", ctx.runeIndex)
 		return false
@@ -70,7 +70,7 @@ func (ctx traverseCtx) assertNotEmpty() bool {
 	return true
 }
 
-func (ctx traverseCtx) assertNextIs(char int32) bool {
+func (ctx *traverseCtx) assertNextIs(char int32) bool {
 	if !ctx.assertNotEmpty() {
 		return false
 	}
@@ -82,7 +82,7 @@ func (ctx traverseCtx) assertNextIs(char int32) bool {
 	return true
 }
 
-func (ctx traverseCtx) checkNextIs(char int32) bool {
+func (ctx *traverseCtx) checkNextIs(char int32) bool {
 	if len(ctx.input[ctx.runeIndex:]) == 0 {
 		return false
 	}
@@ -93,83 +93,89 @@ func (ctx traverseCtx) checkNextIs(char int32) bool {
 	return true
 }
 
-func jsonWalk(input string, l listener) {
-	elementWalk(&traverseCtx{input: []rune(input)}, l)
+func jsonWalk(input string, l listener) error {
+	ctx := &traverseCtx{input: []rune(input), l: l}
+	ctx.elementWalk()
+	return ctx.err
 }
 
-func elementWalk(ctx *traverseCtx, l listener) {
-	wsWalk(ctx, l)
-	valueWalk(ctx, l)
-	wsWalk(ctx, l)
+func (ctx *traverseCtx) elementWalk() {
+	ctx.wsWalk()
+	ctx.valueWalk()
+	ctx.wsWalk()
 }
 
-func objectWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) objectWalk() {
 	if !ctx.assertNextIs('{') {
 		return
 	}
-	l.EnterObject(objectContext{})
+	ctx.l.EnterObject(objectContext{})
 	ctx.runeIndex += 1 //skip {
-	wsWalk(ctx, l)
+	ctx.wsWalk()
 	switch ctx.input[ctx.runeIndex] {
 	case '}':
 		//empty object
 		ctx.runeIndex += 1 //skip }
 	case '"':
 		//non-empty object
-		membersWalk(ctx, l)
+		ctx.membersWalk()
 		if !ctx.assertNextIs('}') {
 			return
 		}
 	}
-	l.ExitObject(objectContext{})
+	ctx.l.ExitObject(objectContext{})
 }
 
-func membersWalk(ctx *traverseCtx, l listener) {
-	memberWalk(ctx, l)
+func (ctx *traverseCtx) membersWalk() {
+	ctx.memberWalk()
 	if ctx.checkNextIs(',') {
 		ctx.runeIndex += 1 //skip ,
-		membersWalk(ctx, l)
+		ctx.membersWalk()
 	}
 }
 
-func memberWalk(ctx *traverseCtx, l listener) {
-	stringWalk(ctx, l)
-	l.EnterMemberKey(memberContext{key: ctx.lastMemberKey})
-	wsWalk(ctx, l)
+func (ctx *traverseCtx) memberWalk() {
+	ctx.stringWalk()
+	ctx.wsWalk()
 	if !ctx.assertNextIs(':') {
 		return
 	}
+	key := ctx.lastMemberKey
+	ctx.l.ExitMemberKey(memberContext{key: key})
 	ctx.runeIndex += 1 //skip :
-	elementWalk(ctx, l)
+	before := ctx.runeIndex
+	ctx.elementWalk()
+	ctx.l.ExitMemberValue(memberContext{key: ctx.lastMemberKey,
+		value: string(ctx.input[before:ctx.runeIndex])})
 }
 
-func stringWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) stringWalk() {
 	if !ctx.assertNextIs('"') {
 		return
 	}
-	ctx.runeIndex += 1 //skip "
 	before := ctx.runeIndex
-	charactersWalk(ctx, l)
+	ctx.runeIndex += 1 //skip "
+	ctx.charactersWalk()
 	if !ctx.assertNextIs('"') {
 		return
 	}
-	ctx.lastMemberKey = string(ctx.input[before:ctx.runeIndex])
 	ctx.runeIndex += 1 //skip "
+	ctx.lastMemberKey = string(ctx.input[before:ctx.runeIndex])
 }
 
 // TODO empty key test case
-func charactersWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) charactersWalk() {
 	if len(ctx.input[ctx.runeIndex:]) == 0 {
 		return
 	}
-	if characterWalk(ctx, l) {
+	if ctx.characterWalk() {
 		ctx.runeIndex += 1
-		charactersWalk(ctx, l)
+		ctx.charactersWalk()
 	}
 }
 
 // TODO escape
-func characterWalk(ctx *traverseCtx, l listener) bool {
+func (ctx *traverseCtx) characterWalk() bool {
 	r := ctx.input[ctx.runeIndex]
 	switch {
 	case r == '"':
@@ -182,32 +188,32 @@ func characterWalk(ctx *traverseCtx, l listener) bool {
 	return false
 }
 
-func valueWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) valueWalk() {
 	if !ctx.assertNotEmpty() {
 		return
 	}
 	switch ctx.input[ctx.runeIndex] {
 	case '{':
-		objectWalk(ctx, l)
+		ctx.objectWalk()
 	case '[':
-		arrayWalk(ctx, l)
+		ctx.arrayWalk()
 	case '"':
-		stringWalk(ctx, l)
+		ctx.stringWalk()
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		numberWalk(ctx, l)
+		ctx.numberWalk()
 	default:
 		ctx.err = fmt.Errorf("invalid json input, expected value at %d", ctx.runeIndex)
 		return
 	}
 }
 
-func numberWalk(ctx *traverseCtx, l listener) {
-	integerWalk(ctx, l)
-	fractionWalk(ctx, l)
-	exponentWalk(ctx, l)
+func (ctx *traverseCtx) numberWalk() {
+	ctx.integerWalk()
+	ctx.fractionWalk()
+	ctx.exponentWalk()
 }
 
-func exponentWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) exponentWalk() {
 	if !ctx.checkNextIs('e') && !ctx.checkNextIs('E') {
 		return
 	}
@@ -215,17 +221,17 @@ func exponentWalk(ctx *traverseCtx, l listener) {
 	if ctx.checkNextIs('+') || !ctx.checkNextIs('-') {
 		ctx.runeIndex += 1 //skip -
 	}
-	digitsWalk(ctx, l)
+	ctx.digitsWalk()
 }
 
-func integerWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) integerWalk() {
 	if ctx.checkNextIs('-') {
 		ctx.runeIndex += 1 //skip -
 	}
-	digitsWalk(ctx, l)
+	ctx.digitsWalk()
 }
 
-func digitsWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) digitsWalk() {
 	for _, r := range ctx.input[ctx.runeIndex:] {
 		if r >= '0' && r <= '9' {
 			ctx.runeIndex += 1
@@ -235,42 +241,42 @@ func digitsWalk(ctx *traverseCtx, l listener) {
 	}
 }
 
-func fractionWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) fractionWalk() {
 	if !ctx.checkNextIs('.') {
 		return
 	}
 	ctx.runeIndex += 1 //skip .
-	digitsWalk(ctx, l)
+	ctx.digitsWalk()
 }
 
-func arrayWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) arrayWalk() {
 	if !ctx.assertNextIs('[') {
 		return
 	}
 	ctx.runeIndex += 1 //skip [
-	wsWalk(ctx, l)
+	ctx.wsWalk()
 	switch ctx.input[ctx.runeIndex] {
 	case ']':
 		//empty array
 		ctx.runeIndex += 1 //skip ]
 	case '"':
 		//non-empty array
-		elementsWalk(ctx, l)
+		ctx.elementsWalk()
 		if !ctx.assertNextIs(']') {
 			return
 		}
 	}
 }
 
-func elementsWalk(ctx *traverseCtx, l listener) {
-	elementWalk(ctx, l)
+func (ctx *traverseCtx) elementsWalk() {
+	ctx.elementWalk()
 	if ctx.checkNextIs(',') {
 		ctx.runeIndex += 1 //skip ,
-		elementsWalk(ctx, l)
+		ctx.elementsWalk()
 	}
 }
 
-func wsWalk(ctx *traverseCtx, l listener) {
+func (ctx *traverseCtx) wsWalk() {
 	input := ctx.input[ctx.runeIndex:]
 	for i := range input {
 		if !ws(input[i]) {

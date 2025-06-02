@@ -3,8 +3,7 @@ package jsonredact
 import (
 	"bytes"
 	"container/list"
-	"github.com/tidwall/gjson"
-	"strconv"
+	"log"
 )
 
 type Redactor struct {
@@ -58,39 +57,35 @@ func (b *lazyBuffer) String() string {
 }
 
 const (
+	matchingStateVisit  int = iota
 	matchingStateRedact int = iota
 	matchingStateSkip   int = iota
-	matchingStateVisit  int = iota
 )
 
 type redactingListener struct {
 	noopListener
-	automata          node
 	buf               *lazyBuffer
 	matchingState     int
-	nodes             list.List
+	nodes             *list.List
 	handler           func(string) string
 	statesBuf         []*state
 	depth             int
 	lastMatchingDepth int
 }
 
-func (r *redactingListener) EnterMemberKey(ctx memberContext) {
+func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 	if r.matchingState != matchingStateVisit {
 		return
 	}
 	if ctx.index != 0 {
 		r.buf.WriteByte(',')
 	}
-}
-func (r *redactingListener) ExitMemberKey(ctx memberContext) {
-	if r.matchingState != matchingStateVisit {
-		return
-	}
+	//fmt.Println("ExitMemberKey ctx.key", ctx.key)
 	r.buf.WriteString(ctx.key)
 	r.buf.WriteByte(':')
-	//match
-	next := r.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
+
+	n := r.nodes.Back().Value.(node)
+	next := n.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
 	if next.isTerminal {
 		r.matchingState = matchingStateRedact
 		r.lastMatchingDepth = r.depth
@@ -113,7 +108,7 @@ func (r *redactingListener) ExitMemberValue(ctx memberContext) {
 	case matchingStateSkip:
 		value = ctx.value
 	case matchingStateRedact:
-		value = r.handler(ctx.value)
+		value = `"` + r.handler(ctx.value) + `"`
 	case matchingStateVisit:
 		return
 	}
@@ -127,6 +122,7 @@ func (r *redactingListener) EnterObject(ctx objectContext) {
 	if r.matchingState != matchingStateVisit {
 		return
 	}
+
 	r.buf.WriteByte('{')
 }
 
@@ -135,57 +131,70 @@ func (r *redactingListener) ExitObject(ctx objectContext) {
 	if r.matchingState != matchingStateVisit {
 		return
 	}
-	r.buf.WriteByte('{')
+	//r.nodes.Remove(r.nodes.Back())
+	r.buf.WriteByte('}')
 }
 
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
-	jsonWalk(json, &redactingListener{automata: automata, buf: buf,
-		statesBuf: make([]*state, 0, 16)})
+	buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
+	nodes := list.New()
+	nodes.PushBack(automata)
+	l := &redactingListener{
+		nodes:     nodes,
+		buf:       buf,
+		statesBuf: make([]*state, 0, 16),
+		handler:   r.handler,
+	}
+	err := jsonWalk(json, l)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
-func (r Redactor) redactOld(json string, automata node, buf *lazyBuffer, offset int) {
-	root := gjson.Parse(json)
-	if root.IsArray() {
-		_ = buf.WriteByte('[')
-	} else {
-		_ = buf.WriteByte('{')
-	}
-	var index int
-	statesBuf := make([]*state, 0, 16)
-	root.ForEach(func(key, value gjson.Result) bool {
-		keyStr := key.Str
-		if root.IsArray() {
-			keyStr = strconv.Itoa(index)
-		}
-		if index != 0 {
-			_ = buf.WriteByte(',')
-		}
-		index++
-		_, _ = buf.WriteString(key.Raw)
-		if !root.IsArray() {
-			_ = buf.WriteByte(':')
-		}
-		next := automata.next(keyStr, statesBuf)
-		if next.isTerminal {
-			if buf.buf == nil {
-				buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
-				_, _ = buf.WriteString(buf.originalJson[:offset+value.Index])
-			}
-			_ = buf.WriteByte('"')
-			_, _ = buf.WriteString(r.handler(value.Raw))
-			_ = buf.WriteByte('"')
-			return true
-		}
-		if len(next.states) == 0 || (!value.IsObject() && !value.IsArray()) {
-			_, _ = buf.WriteString(value.Raw)
-			return true
-		}
-		r.redact(value.Raw, next, buf, offset+value.Index)
-		return true
-	})
-	if root.IsArray() {
-		_ = buf.WriteByte(']')
-	} else {
-		_ = buf.WriteByte('}')
-	}
-}
+//func (r Redactor) redactOld(json string, automata node, buf *lazyBuffer, offset int) {
+//	root := gjson.Parse(json)
+//	if root.IsArray() {
+//		_ = buf.WriteByte('[')
+//	} else {
+//		_ = buf.WriteByte('{')
+//	}
+//	var index int
+//	statesBuf := make([]*state, 0, 16)
+//	root.ForEach(func(key, value gjson.Result) bool {
+//		keyStr := key.Str
+//		if root.IsArray() {
+//			keyStr = strconv.Itoa(index)
+//		}
+//		if index != 0 {
+//			_ = buf.WriteByte(',')
+//		}
+//		index++
+//		_, _ = buf.WriteString(key.Raw)
+//		if !root.IsArray() {
+//			_ = buf.WriteByte(':')
+//		}
+//		next := automata.next(keyStr, statesBuf)
+//		if next.isTerminal {
+//			if buf.buf == nil {
+//				buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
+//				_, _ = buf.WriteString(buf.originalJson[:offset+value.Index])
+//			}
+//			_ = buf.WriteByte('"')
+//			_, _ = buf.WriteString(r.handler(value.Raw))
+//			_ = buf.WriteByte('"')
+//			return true
+//		}
+//		if len(next.states) == 0 || (!value.IsObject() && !value.IsArray()) {
+//			_, _ = buf.WriteString(value.Raw)
+//			return true
+//		}
+//		r.redact(value.Raw, next, buf, offset+value.Index)
+//		return true
+//	})
+//	if root.IsArray() {
+//		_ = buf.WriteByte(']')
+//	} else {
+//		_ = buf.WriteByte('}')
+//	}
+//}
