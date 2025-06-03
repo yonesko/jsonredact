@@ -34,6 +34,9 @@ func (n noopListener) ExitMemberValue(ctx memberContext) {
 func (n noopListener) EnterMemberValue(ctx memberContext) {
 }
 
+func (n noopListener) EnterMembersComma() {
+}
+
 func (n noopListener) ExitMemberKey(ctx memberContext) {
 }
 
@@ -46,6 +49,7 @@ func (n noopListener) ExitObject(ctx objectContext) {
 type listener interface {
 	//EnterMemberKey(ctx memberContext)
 	ExitMemberValue(ctx memberContext)
+	EnterMembersComma()
 
 	EnterMemberValue(ctx memberContext)
 	ExitMemberKey(ctx memberContext)
@@ -129,6 +133,7 @@ func (ctx *traverseCtx) objectWalk() {
 func (ctx *traverseCtx) membersWalk() {
 	ctx.memberWalk()
 	if ctx.checkNextIs(',') {
+		ctx.l.EnterMembersComma()
 		ctx.runeIndex += 1 //skip ,
 		ctx.membersWalk()
 	}

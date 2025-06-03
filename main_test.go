@@ -42,6 +42,11 @@ func TestRedact(t *testing.T) {
 			want: `{"b":"REDACTED"}`,
 		},
 		{
+			name: "base/all values are objects",
+			args: args{json: `{"a":{},"b":{},"c":{}, "x":{"terminal":{}}}`, keys: []string{"b", "a"}},
+			want: `{"b":"REDACTED"}`,
+		},
+		{
 			name: "base/plain path of 0 depth",
 			args: args{json: `{"a":459,"b":707,"c":116, "x":{"terminal":577}}`, keys: []string{"a", "b", "x.terminal"}},
 			want: `{"a":"REDACTED","b":"REDACTED","c":116, "x":{"terminal":"REDACTED"}}`,
@@ -235,16 +240,16 @@ func TestRedact(t *testing.T) {
 			fmt.Println(redactor.automata)
 			got := redactor.Redact(tt.args.json)
 			if !json.Valid([]byte(tt.args.json)) {
-				log.Fatal("input json is invalid for ", tt.name)
+				log.Fatal("input json is invalid")
 			}
 			if !json.Valid([]byte(tt.want)) {
-				log.Fatal("want json is invalid for ", tt.name)
+				log.Fatal("want json is invalid:")
 			}
 			if !json.Valid([]byte(got)) {
-				log.Fatal("got json is invalid for ", tt.name)
+				log.Fatal("got json is invalid: ", got)
 			}
 			if indentIfJSONString(tt.want) != indentIfJSONString(got) {
-				t.Fail()
+				t.Fatalf("want:\n%s\ngot:\n%s\n", indentIfJSONString(tt.want), got)
 			}
 		})
 	}

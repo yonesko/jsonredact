@@ -66,11 +66,14 @@ type redactingListener struct {
 	noopListener
 	buf               *lazyBuffer
 	matchingState     int
-	nodes             *list.List
 	handler           func(string) string
 	statesBuf         []*state
-	depth             int
 	lastMatchingDepth int
+	path              *list.List
+}
+
+func (r *redactingListener) EnterMembersComma() {
+	r.buf.WriteByte(',')
 }
 
 func (r *redactingListener) ExitMemberKey(ctx memberContext) {
@@ -84,23 +87,24 @@ func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 	r.buf.WriteString(ctx.key)
 	r.buf.WriteByte(':')
 
-	n := r.nodes.Back().Value.(node)
-	next := n.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
+	st := r.path.Back().Value.(*redactingListenerState)
+	next := st.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
+	st.nextAutomata = &next
 	if next.isTerminal {
 		r.matchingState = matchingStateRedact
-		r.lastMatchingDepth = r.depth
+		r.lastMatchingDepth = r.path.Len()
 		return
 	}
 	if len(next.states) == 0 {
 		r.matchingState = matchingStateSkip
-		r.lastMatchingDepth = r.depth
+		r.lastMatchingDepth = r.path.Len()
 		return
 	}
 	r.matchingState = matchingStateVisit
 }
 
 func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-	if r.matchingState != matchingStateVisit && r.depth != r.lastMatchingDepth {
+	if r.matchingState != matchingStateVisit && r.path.Len() != r.lastMatchingDepth {
 		return
 	}
 	var value string
@@ -118,7 +122,9 @@ func (r *redactingListener) ExitMemberValue(ctx memberContext) {
 }
 
 func (r *redactingListener) EnterObject(ctx objectContext) {
-	r.depth++
+	st := r.path.Back().Value.(*redactingListenerState)
+	r.path.PushBack(&redactingListenerState{automata: st.nextAutomata})
+	st.nextAutomata = nil
 	if r.matchingState != matchingStateVisit {
 		return
 	}
@@ -127,23 +133,27 @@ func (r *redactingListener) EnterObject(ctx objectContext) {
 }
 
 func (r *redactingListener) ExitObject(ctx objectContext) {
-	r.depth--
+	r.path.Remove(r.path.Back())
 	if r.matchingState != matchingStateVisit {
 		return
 	}
-	//r.nodes.Remove(r.nodes.Back())
 	r.buf.WriteByte('}')
+}
+
+type redactingListenerState struct {
+	automata     *node
+	nextAutomata *node
 }
 
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
 	buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
-	nodes := list.New()
-	nodes.PushBack(automata)
+	path := list.New()
+	path.PushBack(&redactingListenerState{nextAutomata: &automata})
 	l := &redactingListener{
-		nodes:     nodes,
 		buf:       buf,
 		statesBuf: make([]*state, 0, 16),
 		handler:   r.handler,
+		path:      path,
 	}
 	err := jsonWalk(json, l)
 	if err != nil {
