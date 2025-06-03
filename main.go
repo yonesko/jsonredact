@@ -56,20 +56,12 @@ func (b *lazyBuffer) String() string {
 	return b.buf.String()
 }
 
-const (
-	matchingStateVisit  int = iota
-	matchingStateRedact int = iota
-	matchingStateSkip   int = iota
-)
-
 type redactingListener struct {
 	noopListener
-	buf               *lazyBuffer
-	matchingState     int
-	handler           func(string) string
-	statesBuf         []*state
-	lastMatchingDepth int
-	path              *list.List
+	buf       *lazyBuffer
+	handler   func(string) string
+	statesBuf []*state
+	path      *list.List
 }
 
 func (r *redactingListener) EnterMembersComma() {
@@ -77,92 +69,82 @@ func (r *redactingListener) EnterMembersComma() {
 }
 
 func (r *redactingListener) ExitMemberKey(ctx memberContext) {
-	if r.matchingState != matchingStateVisit {
-		return
-	}
-	if ctx.index != 0 {
-		r.buf.WriteByte(',')
-	}
-	//fmt.Println("ExitMemberKey ctx.key", ctx.key)
-	r.buf.WriteString(ctx.key)
-	r.buf.WriteByte(':')
-
 	st := r.path.Back().Value.(*redactingListenerState)
-	next := st.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
-	st.nextAutomata = &next
-	if next.isTerminal {
-		r.matchingState = matchingStateRedact
-		r.lastMatchingDepth = r.path.Len()
-		return
+
+	next := st.parentAutomata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
+	st.currentAutomata = &next
+
+	if len(st.parentAutomata.states) != 0 && !st.parentAutomata.isTerminal {
+		r.buf.WriteString(ctx.key)
+		r.buf.WriteByte(':')
 	}
-	if len(next.states) == 0 {
-		r.matchingState = matchingStateSkip
-		r.lastMatchingDepth = r.path.Len()
-		return
-	}
-	r.matchingState = matchingStateVisit
 }
 
 func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-	if r.matchingState != matchingStateVisit && r.path.Len() != r.lastMatchingDepth {
+	if ctx.valueType != valueTypeObject {
 		return
 	}
-	var value string
-	switch r.matchingState {
-	case matchingStateSkip:
-		value = ctx.value
-	case matchingStateRedact:
-		value = `"` + r.handler(ctx.value) + `"`
-	case matchingStateVisit:
-		return
+	st := r.path.Back().Value.(*redactingListenerState)
+
+	//fmt.Println("value", ctx.value, "st",
+	//	st.parentAutomata.isTerminal, st.currentAutomata.isTerminal,
+	//	len(st.parentAutomata.states), len(st.currentAutomata.states),
+	//)
+
+	//println(ctx.key)
+
+	if st.currentAutomata.isTerminal {
+		r.buf.WriteString(`"` + r.handler(ctx.value) + `"`)
+	} else if len(st.parentAutomata.states) != 0 {
+		r.buf.WriteString(ctx.value)
+		//r.buf.WriteString("[" + ctx.value + "]")
+
 	}
-	r.buf.WriteString(value)
-	r.matchingState = matchingStateVisit
-	r.lastMatchingDepth = -1
+
 }
 
 func (r *redactingListener) EnterObject(ctx objectContext) {
 	st := r.path.Back().Value.(*redactingListenerState)
-	r.path.PushBack(&redactingListenerState{automata: st.nextAutomata})
-	st.nextAutomata = nil
-	if r.matchingState != matchingStateVisit {
-		return
+	//fmt.Println("st",
+	//	st.currentAutomata.isTerminal, len(st.currentAutomata.states),
+	//)
+	r.path.PushBack(&redactingListenerState{parentAutomata: st.currentAutomata})
+	if !st.currentAutomata.isTerminal && len(st.currentAutomata.states) != 0 {
+		r.buf.WriteByte('{')
 	}
-
-	r.buf.WriteByte('{')
 }
 
 func (r *redactingListener) ExitObject(ctx objectContext) {
+	st := r.path.Back().Value.(*redactingListenerState)
 	r.path.Remove(r.path.Back())
-	if r.matchingState != matchingStateVisit {
-		return
+	if !st.parentAutomata.isTerminal && len(st.parentAutomata.states) != 0 {
+		r.buf.WriteByte('}')
 	}
-	r.buf.WriteByte('}')
 }
 
 type redactingListenerState struct {
-	automata     *node
-	nextAutomata *node
+	parentAutomata  *node
+	currentAutomata *node
 }
 
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
 	buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
 	path := list.New()
-	path.PushBack(&redactingListenerState{nextAutomata: &automata})
+	path.PushBack(&redactingListenerState{currentAutomata: &automata})
 	l := &redactingListener{
 		buf:       buf,
 		statesBuf: make([]*state, 0, 16),
 		handler:   r.handler,
 		path:      path,
 	}
-	err := jsonWalk(json, l)
+	err := jsonWalk(json, debugListener{l: l})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 }
 
-//func (r Redactor) redactOld(json string, automata node, buf *lazyBuffer, offset int) {
+//func (r Redactor) redactOld(json string, parentAutomata node, buf *lazyBuffer, offset int) {
 //	root := gjson.Parse(json)
 //	if root.IsArray() {
 //		_ = buf.WriteByte('[')
@@ -184,7 +166,7 @@ func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int
 //		if !root.IsArray() {
 //			_ = buf.WriteByte(':')
 //		}
-//		next := automata.next(keyStr, statesBuf)
+//		next := parentAutomata.next(keyStr, statesBuf)
 //		if next.isTerminal {
 //			if buf.buf == nil {
 //				buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))

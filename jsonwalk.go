@@ -2,6 +2,8 @@ package jsonredact
 
 import (
 	"fmt"
+	"runtime"
+	"strings"
 )
 
 const (
@@ -15,8 +17,6 @@ type memberContext struct {
 	//raw
 	value     string
 	valueType int
-	//member's index in object
-	index int
 }
 
 type objectContext struct {
@@ -66,6 +66,7 @@ type traverseCtx struct {
 	l             listener
 }
 
+// TODO don't walk on error
 func (ctx *traverseCtx) assertNotEmpty() bool {
 	if len(ctx.input[ctx.runeIndex:]) == 0 {
 		ctx.err = fmt.Errorf("unexpected end of input at %d", ctx.runeIndex)
@@ -103,10 +104,11 @@ func jsonWalk(input string, l listener) error {
 	return ctx.err
 }
 
-func (ctx *traverseCtx) elementWalk() {
+func (ctx *traverseCtx) elementWalk() int {
 	ctx.wsWalk()
-	ctx.valueWalk()
+	vt := ctx.valueWalk()
 	ctx.wsWalk()
+	return vt
 }
 
 func (ctx *traverseCtx) objectWalk() {
@@ -126,6 +128,7 @@ func (ctx *traverseCtx) objectWalk() {
 		if !ctx.assertNextIs('}') {
 			return
 		}
+		ctx.runeIndex += 1 //skip }
 	}
 	ctx.l.ExitObject(objectContext{})
 }
@@ -149,10 +152,14 @@ func (ctx *traverseCtx) memberWalk() {
 	key := ctx.lastMemberKey
 	ctx.l.ExitMemberKey(memberContext{key: key})
 	ctx.runeIndex += 1 //skip :
+	ctx.wsWalk()
 	before := ctx.runeIndex
-	ctx.elementWalk()
-	ctx.l.ExitMemberValue(memberContext{key: ctx.lastMemberKey,
-		value: string(ctx.input[before:ctx.runeIndex])})
+	vt := ctx.elementWalk()
+	ctx.l.ExitMemberValue(memberContext{
+		key:       ctx.lastMemberKey,
+		value:     string(ctx.input[before:ctx.runeIndex]),
+		valueType: vt,
+	})
 }
 
 func (ctx *traverseCtx) stringWalk() {
@@ -194,13 +201,14 @@ func (ctx *traverseCtx) characterWalk() bool {
 	return false
 }
 
-func (ctx *traverseCtx) valueWalk() {
+func (ctx *traverseCtx) valueWalk() int {
 	if !ctx.assertNotEmpty() {
-		return
+		return 0
 	}
 	switch ctx.input[ctx.runeIndex] {
 	case '{':
 		ctx.objectWalk()
+		return valueTypeObject
 	case '[':
 		ctx.arrayWalk()
 	case '"':
@@ -209,8 +217,9 @@ func (ctx *traverseCtx) valueWalk() {
 		ctx.numberWalk()
 	default:
 		ctx.err = fmt.Errorf("invalid json input, expected value at %d", ctx.runeIndex)
-		return
+		return 0
 	}
+	return 0
 }
 
 func (ctx *traverseCtx) numberWalk() {
@@ -399,3 +408,56 @@ ws
 	'000D' ws
 	'0009' ws
 */
+
+type debugListener struct {
+	l listener
+}
+
+func (d debugListener) ExitMemberValue(ctx memberContext) {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	d.l.ExitMemberValue(ctx)
+}
+
+func (d debugListener) EnterMembersComma() {
+	ctx := any(nil)
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	d.l.EnterMembersComma()
+}
+
+func (d debugListener) EnterMemberValue(ctx memberContext) {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	d.l.EnterMemberValue(ctx)
+}
+
+func (d debugListener) ExitMemberKey(ctx memberContext) {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	d.l.ExitMemberKey(ctx)
+}
+
+func (d debugListener) EnterObject(ctx objectContext) {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	d.l.EnterObject(ctx)
+}
+
+func (d debugListener) ExitObject(ctx objectContext) {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	d.l.ExitObject(ctx)
+}
+
+func printCurrentFunctionName() string {
+	pc, _, _, ok := runtime.Caller(1)
+	if !ok {
+		fmt.Println("Unable to retrieve caller")
+		return ""
+	}
+	fn := runtime.FuncForPC(pc)
+	if fn != nil {
+		fullName := fn.Name()
+		// Extract the part after the last "/"
+		shortName := fullName[strings.LastIndex(fullName, "/")+1:]
+		// Remove the package name, keep only the function
+		shortName = shortName[strings.Index(shortName, ".")+1:]
+		return shortName
+	}
+	return ""
+}

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"strconv"
@@ -42,9 +41,19 @@ func TestRedact(t *testing.T) {
 			want: `{"b":"REDACTED"}`,
 		},
 		{
+			name: "base/all values are objects no nested",
+			args: args{json: `{"a":{},  "b":  {}}`, keys: []string{"a"}},
+			want: `{"a":"REDACTED","b":{}}`,
+		},
+		{
+			name: "base/one nested",
+			args: args{json: `{"a":{"b":{}}}`, keys: []string{"a.b"}},
+			want: `{"a":{"b":"REDACTED"}}`,
+		},
+		{
 			name: "base/all values are objects",
-			args: args{json: `{"a":{},"b":{},"c":{}, "x":{"terminal":{}}}`, keys: []string{"b", "a"}},
-			want: `{"b":"REDACTED"}`,
+			args: args{json: `{"a":{},"b":{},"c":{}, "x":{"terminal":{}}}`, keys: []string{"a", "b"}},
+			want: `{"a":"REDACTED","b":"REDACTED","c":{}, "x":{"terminal":{}}}`,
 		},
 		{
 			name: "base/plain path of 0 depth",
@@ -240,16 +249,16 @@ func TestRedact(t *testing.T) {
 			fmt.Println(redactor.automata)
 			got := redactor.Redact(tt.args.json)
 			if !json.Valid([]byte(tt.args.json)) {
-				log.Fatal("input json is invalid")
+				t.Fatal("input json is invalid")
 			}
 			if !json.Valid([]byte(tt.want)) {
-				log.Fatal("want json is invalid:")
+				t.Fatal("want json is invalid:")
 			}
 			if !json.Valid([]byte(got)) {
-				log.Fatal("got json is invalid: ", got)
+				t.Fatal("got json is invalid: ", got)
 			}
 			if indentIfJSONString(tt.want) != indentIfJSONString(got) {
-				t.Fatalf("want:\n%s\ngot:\n%s\n", indentIfJSONString(tt.want), got)
+				t.Fatalf("want:\n%s\ngot:\n%s\n", indentIfJSONString(tt.want), indentIfJSONString(got))
 			}
 		})
 	}
