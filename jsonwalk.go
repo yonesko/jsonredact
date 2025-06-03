@@ -135,6 +135,7 @@ func (ctx *traverseCtx) membersWalk() {
 }
 
 func (ctx *traverseCtx) memberWalk() {
+	ctx.wsWalk()
 	ctx.stringWalk()
 	ctx.wsWalk()
 	if !ctx.assertNextIs(':') {
