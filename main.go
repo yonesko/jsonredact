@@ -84,7 +84,7 @@ func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 }
 
 func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-
+	//move to ExitObject
 }
 
 func (r *redactingListener) EnterObject(ctx objectContext) {
