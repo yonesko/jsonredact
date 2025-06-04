@@ -65,72 +65,73 @@ type redactingListener struct {
 }
 
 func (r *redactingListener) EnterMembersComma() {
-	r.buf.WriteByte(',')
+	st := r.path.Back().Value.(*redactingListenerState)
+	if !st.skipMatching {
+		r.buf.WriteByte(',')
+	}
 }
 
 func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 	st := r.path.Back().Value.(*redactingListenerState)
 
-	next := st.parentAutomata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
-	st.currentAutomata = &next
+	next := st.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
+	st.nextAutomata = &next
 
-	if len(st.parentAutomata.states) != 0 && !st.parentAutomata.isTerminal {
+	if !st.skipMatching {
 		r.buf.WriteString(ctx.key)
 		r.buf.WriteByte(':')
 	}
 }
 
 func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-	if ctx.valueType != valueTypeObject {
-		return
-	}
-	st := r.path.Back().Value.(*redactingListenerState)
-
-	//fmt.Println("value", ctx.value, "st",
-	//	st.parentAutomata.isTerminal, st.currentAutomata.isTerminal,
-	//	len(st.parentAutomata.states), len(st.currentAutomata.states),
-	//)
-
-	//println(ctx.key)
-
-	if st.currentAutomata.isTerminal {
-		r.buf.WriteString(`"` + r.handler(ctx.value) + `"`)
-	} else if len(st.parentAutomata.states) != 0 {
-		r.buf.WriteString(ctx.value)
-		//r.buf.WriteString("[" + ctx.value + "]")
-
-	}
 
 }
 
 func (r *redactingListener) EnterObject(ctx objectContext) {
+	//entering json special case
+	if r.path.Len() == 1 {
+		r.buf.WriteByte('{')
+		return
+	}
 	st := r.path.Back().Value.(*redactingListenerState)
-	//fmt.Println("st",
-	//	st.currentAutomata.isTerminal, len(st.currentAutomata.states),
-	//)
-	r.path.PushBack(&redactingListenerState{parentAutomata: st.currentAutomata})
-	if !st.currentAutomata.isTerminal && len(st.currentAutomata.states) != 0 {
+	nextAutomata := *st.nextAutomata
+	st.nextAutomata = nil
+	nextSt := redactingListenerState{
+		automata:     nextAutomata,
+		skipMatching: nextAutomata.isTerminal || len(nextAutomata.states) == 0,
+	}
+	r.path.PushBack(&nextSt)
+
+	if !st.skipMatching && !nextSt.skipMatching {
 		r.buf.WriteByte('{')
 	}
 }
 
 func (r *redactingListener) ExitObject(ctx objectContext) {
+	//exiting json special case
+	if r.path.Len() == 1 {
+		r.buf.WriteByte('}')
+		return
+	}
 	st := r.path.Back().Value.(*redactingListenerState)
 	r.path.Remove(r.path.Back())
-	if !st.parentAutomata.isTerminal && len(st.parentAutomata.states) != 0 {
+	if !st.skipMatching {
 		r.buf.WriteByte('}')
 	}
 }
 
 type redactingListenerState struct {
-	parentAutomata  *node
-	currentAutomata *node
+	//parentAutomata  *node
+	//currentAutomata *node
+	automata     node
+	nextAutomata *node
+	skipMatching bool
 }
 
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
 	buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
 	path := list.New()
-	path.PushBack(&redactingListenerState{currentAutomata: &automata})
+	path.PushBack(&redactingListenerState{automata: automata})
 	l := &redactingListener{
 		buf:       buf,
 		statesBuf: make([]*state, 0, 16),
