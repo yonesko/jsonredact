@@ -56,6 +56,11 @@ func TestRedact(t *testing.T) {
 			want: `{"a":"REDACTED","b":"REDACTED","c":{}, "x":{"terminal":{}}}`,
 		},
 		{
+			name: "base/all values are objects",
+			args: args{json: `{"a":{},"b":{},"c":{}, "x":{"terminal":{}}}`, keys: []string{"x.terminal"}},
+			want: `{"a":{},"b":{},"c":{}, "x":{"terminal":"REDACTED"}}`,
+		},
+		{
 			name: "base/plain path of 0 depth",
 			args: args{json: `{"a":459,"b":707,"c":116, "x":{"terminal":577}}`, keys: []string{"a", "b", "x.terminal"}},
 			want: `{"a":"REDACTED","b":"REDACTED","c":116, "x":{"terminal":"REDACTED"}}`,

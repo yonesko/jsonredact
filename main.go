@@ -83,22 +83,18 @@ func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 	}
 }
 
-func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-	//move to ExitObject
-}
-
 func (r *redactingListener) EnterObject(ctx objectContext) {
 	//entering json special case
-	if r.path.Len() == 1 {
-		r.buf.WriteByte('{')
-		return
-	}
+	//if r.path.Len() == 1 {
+	//	r.buf.WriteByte('{')
+	//	return
+	//}
 	st := r.path.Back().Value.(*redactingListenerState)
 	nextAutomata := *st.nextAutomata
 	st.nextAutomata = nil
 	nextSt := redactingListenerState{
 		automata:     nextAutomata,
-		skipMatching: nextAutomata.isTerminal || len(nextAutomata.states) == 0,
+		skipMatching: nextAutomata.isTerminal,
 	}
 	r.path.PushBack(&nextSt)
 
@@ -109,13 +105,15 @@ func (r *redactingListener) EnterObject(ctx objectContext) {
 
 func (r *redactingListener) ExitObject(ctx objectContext) {
 	//exiting json special case
-	if r.path.Len() == 1 {
-		r.buf.WriteByte('}')
-		return
-	}
+	//if r.path.Len() == 1 {
+	//	r.buf.WriteByte('}')
+	//	return
+	//}
 	st := r.path.Back().Value.(*redactingListenerState)
 	r.path.Remove(r.path.Back())
-	if !st.skipMatching {
+	if st.automata.isTerminal {
+		r.buf.WriteString(`"` + r.handler(ctx.value) + `"`)
+	} else if !st.skipMatching {
 		r.buf.WriteByte('}')
 	}
 }
@@ -131,7 +129,7 @@ type redactingListenerState struct {
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
 	buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
 	path := list.New()
-	path.PushBack(&redactingListenerState{automata: automata})
+	path.PushBack(&redactingListenerState{nextAutomata: &automata})
 	l := &redactingListener{
 		buf:       buf,
 		statesBuf: make([]*state, 0, 16),

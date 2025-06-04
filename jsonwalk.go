@@ -20,6 +20,8 @@ type memberContext struct {
 }
 
 type objectContext struct {
+	//raw
+	value string
 }
 
 type noopListener struct {
@@ -115,6 +117,7 @@ func (ctx *traverseCtx) objectWalk() {
 	if !ctx.assertNextIs('{') {
 		return
 	}
+	before := ctx.runeIndex
 	ctx.l.EnterObject(objectContext{})
 	ctx.runeIndex += 1 //skip {
 	ctx.wsWalk()
@@ -130,7 +133,7 @@ func (ctx *traverseCtx) objectWalk() {
 		}
 		ctx.runeIndex += 1 //skip }
 	}
-	ctx.l.ExitObject(objectContext{})
+	ctx.l.ExitObject(objectContext{value: string(ctx.input[before:ctx.runeIndex])})
 }
 
 func (ctx *traverseCtx) membersWalk() {
