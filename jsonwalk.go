@@ -9,6 +9,9 @@ import (
 const (
 	valueTypeUndefined int = iota
 	valueTypeObject    int = iota
+	valueTypeArray     int = iota
+	valueTypeString    int = iota
+	valueTypeNumber    int = iota
 )
 
 type memberContext struct {
@@ -24,7 +27,26 @@ type objectContext struct {
 	value string
 }
 
+type valueContext struct {
+	//raw
+	value     string
+	valueType int
+}
+
+var (
+	_ listener = noopListener{}
+)
+
 type noopListener struct {
+}
+
+func (n noopListener) ExitValue(ctx valueContext) {
+}
+
+func (n noopListener) EnterArray() {
+}
+
+func (n noopListener) ExitArray() {
 }
 
 func (n noopListener) EnterMemberKey(ctx memberContext) {
@@ -36,7 +58,7 @@ func (n noopListener) ExitMemberValue(ctx memberContext) {
 func (n noopListener) EnterMemberValue(ctx memberContext) {
 }
 
-func (n noopListener) EnterMembersComma() {
+func (n noopListener) EnterComma() {
 }
 
 func (n noopListener) ExitMemberKey(ctx memberContext) {
@@ -51,13 +73,18 @@ func (n noopListener) ExitObject(ctx objectContext) {
 type listener interface {
 	//EnterMemberKey(ctx memberContext)
 	ExitMemberValue(ctx memberContext)
-	EnterMembersComma()
+	EnterComma()
 
 	EnterMemberValue(ctx memberContext)
 	ExitMemberKey(ctx memberContext)
 
 	EnterObject(ctx objectContext)
 	ExitObject(ctx objectContext)
+
+	ExitValue(ctx valueContext)
+
+	EnterArray()
+	ExitArray()
 }
 
 type traverseCtx struct {
@@ -108,7 +135,12 @@ func jsonWalk(input string, l listener) error {
 
 func (ctx *traverseCtx) elementWalk() int {
 	ctx.wsWalk()
+	before := ctx.runeIndex
 	vt := ctx.valueWalk()
+	ctx.l.ExitValue(valueContext{
+		value:     string(ctx.input[before:ctx.runeIndex]),
+		valueType: vt,
+	})
 	ctx.wsWalk()
 	return vt
 }
@@ -139,7 +171,7 @@ func (ctx *traverseCtx) objectWalk() {
 func (ctx *traverseCtx) membersWalk() {
 	ctx.memberWalk()
 	if ctx.checkNextIs(',') {
-		ctx.l.EnterMembersComma()
+		ctx.l.EnterComma()
 		ctx.runeIndex += 1 //skip ,
 		ctx.membersWalk()
 	}
@@ -214,15 +246,17 @@ func (ctx *traverseCtx) valueWalk() int {
 		return valueTypeObject
 	case '[':
 		ctx.arrayWalk()
+		return valueTypeArray
 	case '"':
 		ctx.stringWalk()
+		return valueTypeString
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		ctx.numberWalk()
+		return valueTypeNumber
 	default:
 		ctx.err = fmt.Errorf("invalid json input, expected value at %d", ctx.runeIndex)
 		return 0
 	}
-	return 0
 }
 
 func (ctx *traverseCtx) numberWalk() {
@@ -271,24 +305,27 @@ func (ctx *traverseCtx) arrayWalk() {
 	if !ctx.assertNextIs('[') {
 		return
 	}
+	ctx.l.EnterArray()
 	ctx.runeIndex += 1 //skip [
 	ctx.wsWalk()
 	switch ctx.input[ctx.runeIndex] {
 	case ']':
 		//empty array
 		ctx.runeIndex += 1 //skip ]
-	case '"':
+	default:
 		//non-empty array
 		ctx.elementsWalk()
 		if !ctx.assertNextIs(']') {
 			return
 		}
 	}
+	ctx.l.ExitArray()
 }
 
 func (ctx *traverseCtx) elementsWalk() {
 	ctx.elementWalk()
 	if ctx.checkNextIs(',') {
+		ctx.l.EnterComma()
 		ctx.runeIndex += 1 //skip ,
 		ctx.elementsWalk()
 	}
@@ -416,15 +453,25 @@ type debugListener struct {
 	l listener
 }
 
+func (d debugListener) EnterArray() {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), nil)
+	d.l.EnterArray()
+}
+
+func (d debugListener) ExitArray() {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), nil)
+	d.l.ExitArray()
+}
+
 func (d debugListener) ExitMemberValue(ctx memberContext) {
 	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
 	d.l.ExitMemberValue(ctx)
 }
 
-func (d debugListener) EnterMembersComma() {
+func (d debugListener) EnterComma() {
 	ctx := any(nil)
 	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
-	d.l.EnterMembersComma()
+	d.l.EnterComma()
 }
 
 func (d debugListener) EnterMemberValue(ctx memberContext) {
@@ -445,6 +492,11 @@ func (d debugListener) EnterObject(ctx objectContext) {
 func (d debugListener) ExitObject(ctx objectContext) {
 	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
 	d.l.ExitObject(ctx)
+}
+
+func (d debugListener) ExitValue(ctx valueContext) {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	d.l.ExitValue(ctx)
 }
 
 func printCurrentFunctionName() string {

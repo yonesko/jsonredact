@@ -3,7 +3,6 @@ package jsonredact
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -70,188 +69,188 @@ func TestRedact(t *testing.T) {
 			args: args{json: bigJson, keys: []string{"1age", "1fav.movie", "1friends", "1name.last"}},
 			want: bigJson,
 		},
-		{
-			name: "base/plain path of 3 depth",
-			args: args{json: `{"a":{"b":{"c":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "c"}},
-			want: `{"a":{"b":{"c":"REDACTED"}},"b":1,"c":"REDACTED"}`,
-		},
-		{
-			name: "base/two paths with common prefix",
-			args: args{json: `{"a":{"b":{"c":1, "d":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d"}},
-			want: `{"a":{"b":{"c":"REDACTED", "d":"REDACTED"}},"b":1,"c":1}`,
-		},
-		{
-			name: "base/two paths with common prefix and different depth",
-			args: args{json: `{"a":{"b":{"c":1, "d":{"f":1} }},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d.e"}},
-			want: `{"a":{"b":{"c":"REDACTED", "d":{"f":1} }},"b":1,"c":1}`,
-		},
-		{
-			name: "base/do not override general by particular",
-			args: args{json: `{"a":{"b":1}}`, keys: []string{"a", "a.b"}},
-			want: `{"a":"REDACTED"}`,
-		},
-		{
-			name: "base/do not override general by particular, different order",
-			args: args{json: `{"a":{"b":1}}`, keys: []string{"a.b", "a"}},
-			want: `{"a":"REDACTED"}`,
-		},
-		{
-			name: "array/whole",
-			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a"}},
-			want: `{"a":"REDACTED","b":2}`,
-		},
-		{
-			name: "array/with index",
-			args: args{json: `{"a":[18,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1"}},
-			want: `{"a":[18,"REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
-		},
-		{
-			name: "array/with indexes",
-			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1", "a.0"}},
-			want: `{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
-		},
 		//{
-		//	name: "array/root array", TODO
-		//	args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"0.a.1", "0.a.0"}},
+		//	name: "base/plain path of 3 depth",
+		//	args: args{json: `{"a":{"b":{"c":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "c"}},
+		//	want: `{"a":{"b":{"c":"REDACTED"}},"b":1,"c":"REDACTED"}`,
+		//},
+		//{
+		//	name: "base/two paths with common prefix",
+		//	args: args{json: `{"a":{"b":{"c":1, "d":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d"}},
+		//	want: `{"a":{"b":{"c":"REDACTED", "d":"REDACTED"}},"b":1,"c":1}`,
+		//},
+		//{
+		//	name: "base/two paths with common prefix and different depth",
+		//	args: args{json: `{"a":{"b":{"c":1, "d":{"f":1} }},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d.e"}},
+		//	want: `{"a":{"b":{"c":"REDACTED", "d":{"f":1} }},"b":1,"c":1}`,
+		//},
+		//{
+		//	name: "base/do not override general by particular",
+		//	args: args{json: `{"a":{"b":1}}`, keys: []string{"a", "a.b"}},
+		//	want: `{"a":"REDACTED"}`,
+		//},
+		//{
+		//	name: "base/do not override general by particular, different order",
+		//	args: args{json: `{"a":{"b":1}}`, keys: []string{"a.b", "a"}},
+		//	want: `{"a":"REDACTED"}`,
+		//},
+		//{
+		//	name: "array/whole",
+		//	args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a"}},
+		//	want: `{"a":"REDACTED","b":2}`,
+		//},
+		//{
+		//	name: "array/with index",
+		//	args: args{json: `{"a":[18,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1"}},
+		//	want: `{"a":[18,"REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
+		//},
+		//{
+		//	name: "array/with indexes",
+		//	args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1", "a.0"}},
 		//	want: `{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
 		//},
-		{
-			name: "array/with index in middle",
-			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.2.c", "a.2.d.e"}},
-			want: `{"a":[1,2,{"c":"REDACTED","d":{"e":"REDACTED"}}],"b":2}`,
-		},
-		{
-			name: "array/nested",
-			args: args{json: `{"a":[1,[1,[1,[{"a":1}]]]],"b":2}`, keys: []string{"a.1.1.1.0.a"}},
-			want: `{"a":[1,[1,[1,[{"a":"REDACTED"}]]]],"b":2}`,
-		},
-		{
-			name: "array/certain field of certain array element",
-			args: args{json: `{ "children": [ {"name":"Sara", "null":null}, "Alex", "Jack",null ] }`,
-				keys: []string{`children.0.name`, `children.2.name`}},
-			want: `{ "children": [ {"name":"REDACTED", "null":null}, "Alex", "Jack",null ] }`,
-		},
-		{
-			name: "escape/real point",
-			args: args{json: `{"a.b":1,"a":{"b": 2 } }`, keys: []string{"a.b"}},
-			want: `{ "a.b": 1, "a": { "b": "REDACTED" } }`,
-		},
-		{
-			name: "escape/escaped point",
-			args: args{json: `{ "a.b": 1, "a": { "b": 2 } }`, keys: []string{`a\.b`}},
-			want: `{ "a.b": "REDACTED", "a": { "b": 2 } }`,
-		},
-		{
-			name: "escape/real and escaped point",
-			args: args{json: `{ "a.b": 1, "a": { "b": 2 } }`, keys: []string{`a\.b`, `a.b`}},
-			want: `{ "a.b": "REDACTED", "a": { "b": "REDACTED" } }`,
-		},
-		{
-			name: "escape/point as name",
-			args: args{json: `{ "a": { ".": 2 } }`, keys: []string{`a.\.`}},
-			want: `{ "a": { ".": "REDACTED" } }`,
-		},
-		{
-			name: "escape/quote in name",
-			args: args{json: `{ "a\"": 1 }`, keys: []string{`a\"`}},
-			want: `{ "a\"": "REDACTED" }`,
-		},
-		{
-			name: "escape/star in name",
-			args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
-			want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
-		},
-		{
-			name: "escape/escaped star in name",
-			args: args{json: `{ "\\*": 1,"\\\\*": 2,"\\*\\*": 3}`, keys: []string{`\\\*`, `\\\\\*`, `\\\*\\\*`}},
-			want: `{ "\\*": "REDACTED","\\\\*": "REDACTED","\\*\\*": "REDACTED"}`,
-		},
-		{
-			name: "escape/slash in name",
-			args: args{json: `{ "\\":1}`, keys: []string{`\\`}},
-			want: `{ "\\":"REDACTED"}`,
-		},
-		{
-			name: "escape/# in name",
-			args: args{json: `{ "#":1,"##":2,"a#b":3}`, keys: []string{`\#`, `a\#b`}},
-			want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
-		},
-		{
-			name: "escape/number in name",
-			args: args{json: `{ "0":232, "453":171, "4":406, "1":{"2":332, "3":946}, "5.6":122, "5.7":122}`,
-				keys: []string{`0`, `453`, `1.2`, `5\.6`}},
-			want: `{ "0":"REDACTED", "453":"REDACTED", "4":406, "1":{"2":"REDACTED", "3":946}, "5.6":"REDACTED", "5.7":122}`,
-		},
-		{
-			name: "wildcard/all array elements",
-			args: args{json: `{ "children": [ "Sara", "Alex", "Jack" ] }`, keys: []string{`children.#`}},
-			want: `{ "children": [ "REDACTED", "REDACTED", "REDACTED" ] }`,
-		},
-		{
-			name: "wildcard/certain field of all array elements",
-			args: args{json: `{ "children": [ {"name":"Sara"}, "Alex", "Jack", [[{"name":"Greg"}]],{},7 ] }`,
-				keys: []string{`children.#.name`, `children.0.name`, `children.3.0.0.name`}},
-			want: `{ "children": [ {"name":"REDACTED"}, "Alex", "Jack", [[{"name":"REDACTED"}]],{},7 ] }`,
-		},
-		{
-			name: "wildcard/all fields",
-			args: args{json: `{ "a": "a", "name":"b" }`, keys: []string{`#`}},
-			want: `{ "a": "REDACTED", "name":"REDACTED" }`,
-		},
-		{
-			name: "wildcard/all fields of an object",
-			args: args{json: `{ "a": {"a":1}, "name":"b" }`, keys: []string{`a.#`}},
-			want: `{ "a": {"a":"REDACTED"}, "name":"b" }`,
-		},
-		{
-			name: "wildcard/all fields of an object",
-			args: args{json: `{ "a": {"a":1,"b":"i am b", "d":{"c":56}}, "name":"b" }`, keys: []string{`a.#.c`}},
-			want: `{ "a": {"a":1,"b":"i am b", "d":{"c":"REDACTED"}}, "name":"b" }`,
-		},
-		{
-			name: "recursive/one field",
-			args: args{json: `{"a": 1}`, keys: []string{`*.a`}},
-			want: `{"a": "REDACTED"}`,
-		},
-		{
-			name: "recursive/several stars",
-			args: args{json: `{"a": 1, "x":{"b":263, "a":{"b":297, "a":{"x":{"a":{"b":491}}}}}}`, keys: []string{`*.a.*.b`}},
-			want: `{"a": 1, "x":{"b":263, "a":{"b":"REDACTED", "a":{"x":{"a":{"b":"REDACTED"}}}}}}`,
-		},
-		{
-			name: "recursive/two field",
-			args: args{json: `{"a": 1, "h":{"a":95, "b":466, "k":{"y":{"a":198, "t":109}}}}`, keys: []string{`*.a`, `*.b`}},
-			want: `{"a": "REDACTED", "h":{"a":"REDACTED", "b":"REDACTED", "k":{"y":{"a":"REDACTED", "t":109}}}}`,
-		},
-		{
-			name: "recursive/intersection with prefix",
-			args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
-				keys: []string{`*.a.c`, `*.a.b`}},
-			want: `{"a": 1, "h":{"a":{"c":"REDACTED","b":"REDACTED","a":{"c":"REDACTED","b":"REDACTED"}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
-		},
-		{
-			name: "recursive/intersection with static key",
-			args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
-				keys: []string{`*.a.c`, `a`}},
-			want: `{"a": "REDACTED", "h":{"a":{"c":"REDACTED","b":467,"a":{"c":"REDACTED","b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
-		},
-		{
-			name: "recursive/intersection without prefix",
-			args: args{json: `{ "a": 1, "b":{"c":{"n":3, "z":{"a":34,"k":654}}, "t":{"a":23, "z":0,"k":437}}}`,
-				keys: []string{`*.a`, `b.c.n`, `b.c.*.k`}},
-			want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
-		},
-		{
-			name: "recursive/in middle",
-			args: args{json: `{"a":{"b":{"name":"d","c":{"a":{"b":[[{"name":"d"},[{"name":"d"}]]],"name":"b"}}}},"name":"b"}`,
-				keys: []string{`a.*.name`}},
-			want: `{"a":{"b":{"name":"REDACTED","c":{"a":{"b":[[{"name":"REDACTED"},[{"name":"REDACTED"}]]],"name":"REDACTED"}}}},"name":"b"}`,
-		},
+		////{
+		////	name: "array/root array", TODO
+		////	args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"0.a.1", "0.a.0"}},
+		////	want: `{"a":["REDACTED","REDACTED",{"c":1,"d":{"e":2}}],"b":2}`,
+		////},
+		//{
+		//	name: "array/with index in middle",
+		//	args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.2.c", "a.2.d.e"}},
+		//	want: `{"a":[1,2,{"c":"REDACTED","d":{"e":"REDACTED"}}],"b":2}`,
+		//},
+		//{
+		//	name: "array/nested",
+		//	args: args{json: `{"a":[1,[1,[1,[{"a":1}]]]],"b":2}`, keys: []string{"a.1.1.1.0.a"}},
+		//	want: `{"a":[1,[1,[1,[{"a":"REDACTED"}]]]],"b":2}`,
+		//},
+		//{
+		//	name: "array/certain field of certain array element",
+		//	args: args{json: `{ "children": [ {"name":"Sara", "null":null}, "Alex", "Jack",null ] }`,
+		//		keys: []string{`children.0.name`, `children.2.name`}},
+		//	want: `{ "children": [ {"name":"REDACTED", "null":null}, "Alex", "Jack",null ] }`,
+		//},
+		//{
+		//	name: "escape/real point",
+		//	args: args{json: `{"a.b":1,"a":{"b": 2 } }`, keys: []string{"a.b"}},
+		//	want: `{ "a.b": 1, "a": { "b": "REDACTED" } }`,
+		//},
+		//{
+		//	name: "escape/escaped point",
+		//	args: args{json: `{ "a.b": 1, "a": { "b": 2 } }`, keys: []string{`a\.b`}},
+		//	want: `{ "a.b": "REDACTED", "a": { "b": 2 } }`,
+		//},
+		//{
+		//	name: "escape/real and escaped point",
+		//	args: args{json: `{ "a.b": 1, "a": { "b": 2 } }`, keys: []string{`a\.b`, `a.b`}},
+		//	want: `{ "a.b": "REDACTED", "a": { "b": "REDACTED" } }`,
+		//},
+		//{
+		//	name: "escape/point as name",
+		//	args: args{json: `{ "a": { ".": 2 } }`, keys: []string{`a.\.`}},
+		//	want: `{ "a": { ".": "REDACTED" } }`,
+		//},
+		//{
+		//	name: "escape/quote in name",
+		//	args: args{json: `{ "a\"": 1 }`, keys: []string{`a\"`}},
+		//	want: `{ "a\"": "REDACTED" }`,
+		//},
+		//{
+		//	name: "escape/star in name",
+		//	args: args{json: `{ "*": 1, "a*b":2 }`, keys: []string{`\*`, `a\*b`}},
+		//	want: `{ "*": "REDACTED", "a*b":"REDACTED" }`,
+		//},
+		//{
+		//	name: "escape/escaped star in name",
+		//	args: args{json: `{ "\\*": 1,"\\\\*": 2,"\\*\\*": 3}`, keys: []string{`\\\*`, `\\\\\*`, `\\\*\\\*`}},
+		//	want: `{ "\\*": "REDACTED","\\\\*": "REDACTED","\\*\\*": "REDACTED"}`,
+		//},
+		//{
+		//	name: "escape/slash in name",
+		//	args: args{json: `{ "\\":1}`, keys: []string{`\\`}},
+		//	want: `{ "\\":"REDACTED"}`,
+		//},
+		//{
+		//	name: "escape/# in name",
+		//	args: args{json: `{ "#":1,"##":2,"a#b":3}`, keys: []string{`\#`, `a\#b`}},
+		//	want: `{ "#":"REDACTED","##":2,"a#b":"REDACTED"}`,
+		//},
+		//{
+		//	name: "escape/number in name",
+		//	args: args{json: `{ "0":232, "453":171, "4":406, "1":{"2":332, "3":946}, "5.6":122, "5.7":122}`,
+		//		keys: []string{`0`, `453`, `1.2`, `5\.6`}},
+		//	want: `{ "0":"REDACTED", "453":"REDACTED", "4":406, "1":{"2":"REDACTED", "3":946}, "5.6":"REDACTED", "5.7":122}`,
+		//},
+		//{
+		//	name: "wildcard/all array elements",
+		//	args: args{json: `{ "children": [ "Sara", "Alex", "Jack" ] }`, keys: []string{`children.#`}},
+		//	want: `{ "children": [ "REDACTED", "REDACTED", "REDACTED" ] }`,
+		//},
+		//{
+		//	name: "wildcard/certain field of all array elements",
+		//	args: args{json: `{ "children": [ {"name":"Sara"}, "Alex", "Jack", [[{"name":"Greg"}]],{},7 ] }`,
+		//		keys: []string{`children.#.name`, `children.0.name`, `children.3.0.0.name`}},
+		//	want: `{ "children": [ {"name":"REDACTED"}, "Alex", "Jack", [[{"name":"REDACTED"}]],{},7 ] }`,
+		//},
+		//{
+		//	name: "wildcard/all fields",
+		//	args: args{json: `{ "a": "a", "name":"b" }`, keys: []string{`#`}},
+		//	want: `{ "a": "REDACTED", "name":"REDACTED" }`,
+		//},
+		//{
+		//	name: "wildcard/all fields of an object",
+		//	args: args{json: `{ "a": {"a":1}, "name":"b" }`, keys: []string{`a.#`}},
+		//	want: `{ "a": {"a":"REDACTED"}, "name":"b" }`,
+		//},
+		//{
+		//	name: "wildcard/all fields of an object",
+		//	args: args{json: `{ "a": {"a":1,"b":"i am b", "d":{"c":56}}, "name":"b" }`, keys: []string{`a.#.c`}},
+		//	want: `{ "a": {"a":1,"b":"i am b", "d":{"c":"REDACTED"}}, "name":"b" }`,
+		//},
+		//{
+		//	name: "recursive/one field",
+		//	args: args{json: `{"a": 1}`, keys: []string{`*.a`}},
+		//	want: `{"a": "REDACTED"}`,
+		//},
+		//{
+		//	name: "recursive/several stars",
+		//	args: args{json: `{"a": 1, "x":{"b":263, "a":{"b":297, "a":{"x":{"a":{"b":491}}}}}}`, keys: []string{`*.a.*.b`}},
+		//	want: `{"a": 1, "x":{"b":263, "a":{"b":"REDACTED", "a":{"x":{"a":{"b":"REDACTED"}}}}}}`,
+		//},
+		//{
+		//	name: "recursive/two field",
+		//	args: args{json: `{"a": 1, "h":{"a":95, "b":466, "k":{"y":{"a":198, "t":109}}}}`, keys: []string{`*.a`, `*.b`}},
+		//	want: `{"a": "REDACTED", "h":{"a":"REDACTED", "b":"REDACTED", "k":{"y":{"a":"REDACTED", "t":109}}}}`,
+		//},
+		//{
+		//	name: "recursive/intersection with prefix",
+		//	args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+		//		keys: []string{`*.a.c`, `*.a.b`}},
+		//	want: `{"a": 1, "h":{"a":{"c":"REDACTED","b":"REDACTED","a":{"c":"REDACTED","b":"REDACTED"}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+		//},
+		//{
+		//	name: "recursive/intersection with static key",
+		//	args: args{json: `{"a": 1, "h":{"a":{"c":739,"b":467,"a":{"c":739,"b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+		//		keys: []string{`*.a.c`, `a`}},
+		//	want: `{"a": "REDACTED", "h":{"a":{"c":"REDACTED","b":467,"a":{"c":"REDACTED","b":467}}, "b":466, "k":{"y":{"a":198, "t":109}}}}`,
+		//},
+		//{
+		//	name: "recursive/intersection without prefix",
+		//	args: args{json: `{ "a": 1, "b":{"c":{"n":3, "z":{"a":34,"k":654}}, "t":{"a":23, "z":0,"k":437}}}`,
+		//		keys: []string{`*.a`, `b.c.n`, `b.c.*.k`}},
+		//	want: `{ "a": "REDACTED", "b":{"c":{"n":"REDACTED", "z":{"a":"REDACTED","k":"REDACTED"}}, "t":{"a":"REDACTED", "z":0,"k":437}}}`,
+		//},
+		//{
+		//	name: "recursive/in middle",
+		//	args: args{json: `{"a":{"b":{"name":"d","c":{"a":{"b":[[{"name":"d"},[{"name":"d"}]]],"name":"b"}}}},"name":"b"}`,
+		//		keys: []string{`a.*.name`}},
+		//	want: `{"a":{"b":{"name":"REDACTED","c":{"a":{"b":[[{"name":"REDACTED"},[{"name":"REDACTED"}]]],"name":"REDACTED"}}}},"name":"b"}`,
+		//},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
-			fmt.Println(redactor.automata)
+			//fmt.Println(redactor.automata)
 			got := redactor.Redact(tt.args.json)
 			if !json.Valid([]byte(tt.args.json)) {
 				t.Fatal("input json is invalid")

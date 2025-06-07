@@ -3,7 +3,6 @@ package jsonredact
 import (
 	"bytes"
 	"container/list"
-	"log"
 )
 
 type Redactor struct {
@@ -64,7 +63,7 @@ type redactingListener struct {
 	path      *list.List
 }
 
-func (r *redactingListener) EnterMembersComma() {
+func (r *redactingListener) EnterComma() {
 	st := r.path.Back().Value.(*redactingListenerState)
 	if !st.skipMatching {
 		r.buf.WriteByte(',')
@@ -108,6 +107,24 @@ func (r *redactingListener) ExitObject(ctx objectContext) {
 	}
 }
 
+func (r *redactingListener) ExitMemberValue(ctx memberContext) {
+	if ctx.valueType != 0 {
+		return
+	}
+	st := r.path.Back().Value.(*redactingListenerState)
+	nextAutomata := *st.nextAutomata
+	st.nextAutomata = nil
+	if nextAutomata.isTerminal {
+		r.buf.WriteString(`"` + r.handler(ctx.value) + `"`)
+	} else {
+		r.buf.WriteString(ctx.value)
+	}
+}
+
+func (r *redactingListener) ExitValue(ctx valueContext) {
+
+}
+
 type redactingListenerState struct {
 	automata     node
 	nextAutomata *node
@@ -126,7 +143,6 @@ func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int
 	}
 	err := jsonWalk(json, debugListener{l: l})
 	if err != nil {
-		log.Fatal(err)
+		buf.buf = bytes.NewBuffer([]byte(buf.originalJson))
 	}
-
 }

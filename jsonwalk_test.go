@@ -3,16 +3,25 @@ package jsonredact
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"testing"
 )
 
 type printingListener struct {
-	noopListener
 	b *bytes.Buffer
 }
 
-func (p *printingListener) EnterMembersComma() {
+func (p *printingListener) EnterMemberValue(ctx memberContext) {
+}
+
+func (p *printingListener) EnterArray() {
+	p.b.WriteByte('[')
+}
+
+func (p *printingListener) ExitArray() {
+	p.b.WriteByte(']')
+}
+
+func (p *printingListener) EnterComma() {
 	p.b.WriteByte(',')
 }
 
@@ -30,8 +39,10 @@ func (p *printingListener) ExitObject(ctx objectContext) {
 }
 
 func (p *printingListener) ExitMemberValue(ctx memberContext) {
-	fmt.Printf("'%s'\n", ctx.value)
-	if ctx.valueType != valueTypeObject {
+}
+
+func (p *printingListener) ExitValue(ctx valueContext) {
+	if ctx.valueType != valueTypeObject && ctx.valueType != valueTypeArray {
 		p.b.WriteString(ctx.value)
 	}
 }
@@ -41,12 +52,14 @@ func Test_jsonWalk(t *testing.T) {
 		name  string
 		input string
 	}{
-		{input: `{"a":{},"b":{},"c":{},"x":{"terminal":{}}}`},
-		{input: `{"a":{"b":12345}}`},
+		{input: `{"a":{},"b" :{},"c":{},"x":{"terminal":{}}}`},
+		{input: `{"a":{ "b": 12345}}`},
+		{input: ` [1,2,3,4,5]`},
+		{input: ` [1,2,3,4,5, "", "null", "true", {}, {"a":56}]`},
 	}
-	buffer := bytes.Buffer{}
-	//l := debugListener{l: &printingListener{b: buffer}}
-	l := &printingListener{b: &buffer}
+	buffer := &bytes.Buffer{}
+	l := debugListener{l: &printingListener{b: buffer}}
+	//l := &printingListener{b: &buffer}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			buffer.Reset()
@@ -60,7 +73,7 @@ func Test_jsonWalk(t *testing.T) {
 			if !json.Valid([]byte(buffer.String())) {
 				t.Fatal("got json is invalid:\n", buffer.String())
 			}
-			if buffer.String() != tt.input {
+			if indentIfJSONString(buffer.String()) != indentIfJSONString(tt.input) {
 				t.Fatalf("input is not equal to expected output\ninput:\n%s\noutput:\n%s\n", tt.input, buffer.String())
 			}
 		})
