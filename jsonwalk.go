@@ -94,7 +94,7 @@ type listener interface {
 
 type traverseCtx struct {
 	runeIndex     int
-	input         []rune
+	input         string
 	err           error
 	lastMemberKey string
 	l             listener
@@ -109,7 +109,7 @@ func (ctx *traverseCtx) assertNotEmpty() bool {
 	return true
 }
 
-func (ctx *traverseCtx) assertNextIs(char int32) bool {
+func (ctx *traverseCtx) assertNextIs(char uint8) bool {
 	if !ctx.assertNotEmpty() {
 		return false
 	}
@@ -121,7 +121,7 @@ func (ctx *traverseCtx) assertNextIs(char int32) bool {
 	return true
 }
 
-func (ctx *traverseCtx) checkNextIs(char int32) bool {
+func (ctx *traverseCtx) checkNextIs(char uint8) bool {
 	if len(ctx.input[ctx.runeIndex:]) == 0 {
 		return false
 	}
@@ -133,7 +133,7 @@ func (ctx *traverseCtx) checkNextIs(char int32) bool {
 }
 
 func jsonWalk(input string, l listener) error {
-	ctx := &traverseCtx{input: []rune(input), l: l}
+	ctx := &traverseCtx{input: input, l: l}
 	ctx.elementWalk()
 	return ctx.err
 }
@@ -143,7 +143,7 @@ func (ctx *traverseCtx) elementWalk() int {
 	before := ctx.runeIndex
 	vt := ctx.valueWalk()
 	ctx.l.ExitValue(valueContext{
-		value:     string(ctx.input[before:ctx.runeIndex]),
+		value:     ctx.input[before:ctx.runeIndex],
 		valueType: vt,
 	})
 	ctx.wsWalk()
@@ -235,7 +235,7 @@ func (ctx *traverseCtx) characterWalk() bool {
 		return false
 	case r == '\\':
 		return false
-	case r >= 0x20 && r <= 0x10FFF:
+	case r >= 0x20:
 		return true
 	}
 	return false
@@ -350,7 +350,7 @@ func (ctx *traverseCtx) wsWalk() {
 	}
 }
 
-func ws(r rune) bool {
+func ws(r uint8) bool {
 	return r == '\u0020' || r == '\u000A' || r == '\u000D' || r == '\u0009'
 }
 
