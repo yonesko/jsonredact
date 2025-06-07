@@ -108,7 +108,7 @@ func (r *redactingListener) ExitObject(ctx objectContext) {
 }
 
 func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-	if ctx.valueType != 0 {
+	if ctx.valueType == valueTypeArray || ctx.valueType == valueTypeObject {
 		return
 	}
 	st := r.path.Back().Value.(*redactingListenerState)
