@@ -482,8 +482,7 @@ func (d debugListener) ExitMemberValue(ctx memberContext) {
 }
 
 func (d debugListener) EnterComma() {
-	ctx := any(nil)
-	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), nil)
 	d.l.EnterComma()
 }
 
