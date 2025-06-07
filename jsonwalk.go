@@ -463,7 +463,7 @@ type debugListener struct {
 
 func (d debugListener) EnterValue(ctx valueContext) {
 	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), ctx)
-	d.l.EnterArray()
+	d.l.EnterValue(ctx)
 }
 
 func (d debugListener) EnterArray() {

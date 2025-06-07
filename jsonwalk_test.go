@@ -58,6 +58,7 @@ func Test_jsonWalk(t *testing.T) {
 		{input: `{"a":{},"b" :{},"c":{},"x":{"terminal":{}}}`},
 		{input: `{"a":{ "b": 12345}}`},
 		{input: ` [1,2,3,4,5]`},
+		{input: `{}`},
 		{input: ` [1,2,3,4,5, "", "null", "true", {}, {"a":56}]`},
 	}
 	buffer := &bytes.Buffer{}
