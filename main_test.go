@@ -295,11 +295,6 @@ Benchmark/bigJson/recursive_no_match-8            118838             10109 ns/op
 Benchmark/bigJson/match-8                         122835              9868 ns/op           20500 B/op         59 allocs/op
 Benchmark/deepJson/recursive_no_match-8            32434             38300 ns/op           12417 B/op        198 allocs/op
 Benchmark/deepJson/recursive_match-8               31749             37769 ns/op           13440 B/op        203 allocs/op
-BenchmarkComplexity/complexity/1-8               1560426               771.4 ns/op           728 B/op         17 allocs/op
-BenchmarkComplexity/complexity/10-8               226406              5420 ns/op            2776 B/op         62 allocs/op
-BenchmarkComplexity/complexity/100-8               22657             49659 ns/op           24152 B/op        512 allocs/op
-BenchmarkComplexity/complexity/1000-8               2437            489491 ns/op          230105 B/op       5012 allocs/op
-BenchmarkComplexity/complexity/10000-8               246           4885096 ns/op         2230270 B/op      50012 allocs/op
 */
 func Benchmark(b *testing.B) {
 	b.Run("bigJson/just unmarshal", func(b *testing.B) {
