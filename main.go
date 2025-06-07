@@ -88,11 +88,11 @@ func (r *redactingListener) EnterObject(ctx objectContext) {
 	st.nextAutomata = nil
 	nextSt := redactingListenerState{
 		automata:     nextAutomata,
-		skipMatching: nextAutomata.isTerminal,
+		skipMatching: nextAutomata.isTerminal || st.skipMatching,
 	}
 	r.path.PushBack(&nextSt)
 
-	if !st.skipMatching && !nextSt.skipMatching {
+	if !nextSt.skipMatching {
 		r.buf.WriteByte('{')
 	}
 }
@@ -108,10 +108,10 @@ func (r *redactingListener) ExitObject(ctx objectContext) {
 }
 
 func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-	if ctx.valueType == valueTypeArray || ctx.valueType == valueTypeObject {
+	st := r.path.Back().Value.(*redactingListenerState)
+	if ctx.valueType == valueTypeArray || ctx.valueType == valueTypeObject || st.skipMatching {
 		return
 	}
-	st := r.path.Back().Value.(*redactingListenerState)
 	nextAutomata := *st.nextAutomata
 	st.nextAutomata = nil
 	if nextAutomata.isTerminal {
