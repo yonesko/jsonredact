@@ -288,13 +288,13 @@ func TestConcurrent(t *testing.T) {
 goos: darwin
 goarch: arm64
 cpu: Apple M1
-Benchmark/bigJson/just_unmarshal-8                 32221             36218 ns/op           27976 B/op        747 allocs/op
-Benchmark/bigJson/empty_selectors-8             568626504                2.117 ns/op           0 B/op          0 allocs/op
-Benchmark/bigJson/no_match-8                      121154             10425 ns/op           20500 B/op         59 allocs/op
-Benchmark/bigJson/recursive_no_match-8            118838             10109 ns/op           20500 B/op         59 allocs/op
-Benchmark/bigJson/match-8                         122835              9868 ns/op           20500 B/op         59 allocs/op
-Benchmark/deepJson/recursive_no_match-8            32434             38300 ns/op           12417 B/op        198 allocs/op
-Benchmark/deepJson/recursive_match-8               31749             37769 ns/op           13440 B/op        203 allocs/op
+Benchmark/bigJson/just_unmarshal-8                 31219             35880 ns/op           27976 B/op        747 allocs/op
+Benchmark/bigJson/empty_selectors-8             578820008                2.071 ns/op           0 B/op          0 allocs/op
+Benchmark/bigJson/no_match-8                      605355              1969 ns/op            7084 B/op         25 allocs/op
+Benchmark/bigJson/recursive_no_match-8            615570              1923 ns/op            7084 B/op         25 allocs/op
+Benchmark/bigJson/match-8                         598473              1966 ns/op            7084 B/op         25 allocs/op
+Benchmark/deepJson/recursive_no_match-8           284110              4155 ns/op            3832 B/op         88 allocs/op
+Benchmark/deepJson/recursive_match-8              258918              4582 ns/op            4856 B/op         93 allocs/op
 */
 func Benchmark(b *testing.B) {
 	b.Run("bigJson/just unmarshal", func(b *testing.B) {
@@ -358,11 +358,11 @@ func Benchmark(b *testing.B) {
 goos: darwin
 goarch: arm64
 cpu: Apple M1
-BenchmarkComplexity/complexity/1-8               1423593               786.3 ns/op           728 B/op         17 allocs/op
-BenchmarkComplexity/complexity/10-8               226778              5350 ns/op            2776 B/op         62 allocs/op
-BenchmarkComplexity/complexity/100-8               23527             52839 ns/op           24152 B/op        512 allocs/op
-BenchmarkComplexity/complexity/1000-8               2364            495950 ns/op          230108 B/op       5012 allocs/op
-BenchmarkComplexity/complexity/10000-8               241           5015791 ns/op         2230280 B/op      50012 allocs/op
+BenchmarkComplexity/complexity/1-8               3781501               318.7 ns/op           504 B/op         10 allocs/op
+BenchmarkComplexity/complexity/10-8              1000000              1010 ns/op             792 B/op         19 allocs/op
+BenchmarkComplexity/complexity/100-8              129944              8105 ns/op            3672 B/op        109 allocs/op
+BenchmarkComplexity/complexity/1000-8              15798             75993 ns/op           32472 B/op       1009 allocs/op
+BenchmarkComplexity/complexity/10000-8              1573            760271 ns/op          320473 B/op      10009 allocs/op
 */
 func BenchmarkComplexity(b *testing.B) {
 	b.ReportAllocs()
