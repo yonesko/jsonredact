@@ -2,7 +2,6 @@ package jsonredact
 
 import (
 	"bytes"
-	"container/list"
 )
 
 type Redactor struct {
@@ -60,18 +59,18 @@ type redactingListener struct {
 	buf       *lazyBuffer
 	handler   func(string) string
 	statesBuf []*state
-	path      *list.List
+	path      []*redactingListenerState
 }
 
 func (r *redactingListener) EnterComma() {
-	st := r.path.Back().Value.(*redactingListenerState)
+	st := r.path[len(r.path)-1]
 	if !st.skipMatching {
 		r.buf.WriteByte(',')
 	}
 }
 
 func (r *redactingListener) ExitMemberKey(ctx memberContext) {
-	st := r.path.Back().Value.(*redactingListenerState)
+	st := r.path[len(r.path)-1]
 
 	next := st.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
 	st.nextAutomata = &next
@@ -89,14 +88,14 @@ func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 }
 
 func (r *redactingListener) EnterObject(ctx objectContext) {
-	st := r.path.Back().Value.(*redactingListenerState)
+	st := r.path[len(r.path)-1]
 	nextAutomata := *st.nextAutomata
 	st.nextAutomata = nil
 	nextSt := redactingListenerState{
 		automata:     nextAutomata,
 		skipMatching: nextAutomata.isTerminal || st.skipMatching,
 	}
-	r.path.PushBack(&nextSt)
+	r.path = append(r.path, &nextSt)
 
 	if !nextSt.skipMatching {
 		r.buf.WriteByte('{')
@@ -104,8 +103,8 @@ func (r *redactingListener) EnterObject(ctx objectContext) {
 }
 
 func (r *redactingListener) ExitObject(ctx objectContext) {
-	st := r.path.Back().Value.(*redactingListenerState)
-	r.path.Remove(r.path.Back())
+	st := r.path[len(r.path)-1]
+	r.path = r.path[:len(r.path)-1]
 	if st.automata.isTerminal {
 		r.buf.WriteString(`"` + r.handler(ctx.value) + `"`)
 	} else if !st.skipMatching {
@@ -114,7 +113,7 @@ func (r *redactingListener) ExitObject(ctx objectContext) {
 }
 
 func (r *redactingListener) ExitMemberValue(ctx memberContext) {
-	st := r.path.Back().Value.(*redactingListenerState)
+	st := r.path[len(r.path)-1]
 	if ctx.valueType == valueTypeArray || ctx.valueType == valueTypeObject || st.skipMatching {
 		return
 	}
@@ -138,13 +137,11 @@ type redactingListenerState struct {
 }
 
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
-	path := list.New()
-	path.PushBack(&redactingListenerState{nextAutomata: &automata})
 	l := &redactingListener{
 		buf:       buf,
 		statesBuf: make([]*state, 0, 16),
 		handler:   r.handler,
-		path:      path,
+		path:      []*redactingListenerState{{nextAutomata: &automata}},
 	}
 	err := jsonWalk(json, l)
 	//err := jsonWalk(json, debugListener{l: l})
