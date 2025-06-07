@@ -137,11 +137,13 @@ type redactingListenerState struct {
 }
 
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
+	path := make([]*redactingListenerState, 0, 20)
+	path = append(path, &redactingListenerState{nextAutomata: &automata})
 	l := &redactingListener{
 		buf:       buf,
 		statesBuf: make([]*state, 0, 16),
 		handler:   r.handler,
-		path:      []*redactingListenerState{{nextAutomata: &automata}}[:1:20],
+		path:      path,
 	}
 	err := jsonWalk(json, l)
 	//err := jsonWalk(json, debugListener{l: l})
