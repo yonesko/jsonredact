@@ -47,6 +47,9 @@ func (p *printingListener) ExitValue(ctx valueContext) {
 	}
 }
 
+func (p *printingListener) EnterValue(ctx valueContext) {
+}
+
 func Test_jsonWalk(t *testing.T) {
 	tests := []struct {
 		name  string

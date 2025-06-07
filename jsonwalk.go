@@ -43,6 +43,9 @@ type noopListener struct {
 func (n noopListener) ExitValue(ctx valueContext) {
 }
 
+func (n noopListener) EnterValue(ctx valueContext) {
+}
+
 func (n noopListener) EnterArray() {
 }
 
@@ -81,6 +84,7 @@ type listener interface {
 	EnterObject(ctx objectContext)
 	ExitObject(ctx objectContext)
 
+	EnterValue(ctx valueContext)
 	ExitValue(ctx valueContext)
 
 	EnterArray()
@@ -242,15 +246,19 @@ func (ctx *traverseCtx) valueWalk() int {
 	}
 	switch ctx.input[ctx.runeIndex] {
 	case '{':
+		ctx.l.EnterValue(valueContext{valueType: valueTypeObject})
 		ctx.objectWalk()
 		return valueTypeObject
 	case '[':
+		ctx.l.EnterValue(valueContext{valueType: valueTypeArray})
 		ctx.arrayWalk()
 		return valueTypeArray
 	case '"':
+		ctx.l.EnterValue(valueContext{valueType: valueTypeString})
 		ctx.stringWalk()
 		return valueTypeString
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		ctx.l.EnterValue(valueContext{valueType: valueTypeNumber})
 		ctx.numberWalk()
 		return valueTypeNumber
 	default:
@@ -451,6 +459,11 @@ ws
 
 type debugListener struct {
 	l listener
+}
+
+func (d debugListener) EnterValue(ctx valueContext) {
+	fmt.Printf("%s(%+v)\n", printCurrentFunctionName(), nil)
+	d.l.EnterArray()
 }
 
 func (d debugListener) EnterArray() {
