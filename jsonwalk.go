@@ -20,6 +20,7 @@ type memberContext struct {
 	//raw
 	value     string
 	valueType int
+	runeIndex int
 }
 
 type objectContext struct {
@@ -174,10 +175,10 @@ func (ctx *traverseCtx) objectWalk() {
 
 func (ctx *traverseCtx) membersWalk() {
 	ctx.memberWalk()
-	if ctx.checkNextIs(',') {
+	for ctx.checkNextIs(',') {
 		ctx.l.EnterComma()
 		ctx.runeIndex += 1 //skip ,
-		ctx.membersWalk()
+		ctx.memberWalk()
 	}
 }
 
@@ -189,7 +190,7 @@ func (ctx *traverseCtx) memberWalk() {
 		return
 	}
 	key := ctx.lastMemberKey
-	ctx.l.ExitMemberKey(memberContext{key: key})
+	ctx.l.ExitMemberKey(memberContext{key: key, runeIndex: ctx.runeIndex})
 	ctx.runeIndex += 1 //skip :
 	ctx.wsWalk()
 	before := ctx.runeIndex
@@ -220,9 +221,9 @@ func (ctx *traverseCtx) charactersWalk() {
 	if len(ctx.input[ctx.runeIndex:]) == 0 {
 		return
 	}
-	if ctx.characterWalk() {
+	for ctx.characterWalk() {
 		ctx.runeIndex += 1
-		ctx.charactersWalk()
+		ctx.characterWalk()
 	}
 }
 
@@ -332,10 +333,10 @@ func (ctx *traverseCtx) arrayWalk() {
 
 func (ctx *traverseCtx) elementsWalk() {
 	ctx.elementWalk()
-	if ctx.checkNextIs(',') {
+	for ctx.checkNextIs(',') {
 		ctx.l.EnterComma()
 		ctx.runeIndex += 1 //skip ,
-		ctx.elementsWalk()
+		ctx.elementWalk()
 	}
 }
 

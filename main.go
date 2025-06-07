@@ -76,6 +76,12 @@ func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 	next := st.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
 	st.nextAutomata = &next
 
+	if next.isTerminal && r.buf.buf == nil {
+		r.buf.buf = bytes.NewBuffer(make([]byte, 0, len(r.buf.originalJson)))
+		r.buf.WriteString(string([]rune(r.buf.originalJson)[:ctx.runeIndex+1]))
+		return
+	}
+
 	if !st.skipMatching {
 		r.buf.WriteString(ctx.key)
 		r.buf.WriteByte(':')
@@ -132,7 +138,6 @@ type redactingListenerState struct {
 }
 
 func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
-	buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
 	path := list.New()
 	path.PushBack(&redactingListenerState{nextAutomata: &automata})
 	l := &redactingListener{
@@ -141,7 +146,8 @@ func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int
 		handler:   r.handler,
 		path:      path,
 	}
-	err := jsonWalk(json, debugListener{l: l})
+	err := jsonWalk(json, l)
+	//err := jsonWalk(json, debugListener{l: l})
 	if err != nil {
 		buf.buf = bytes.NewBuffer([]byte(buf.originalJson))
 	}
