@@ -84,11 +84,6 @@ func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 }
 
 func (r *redactingListener) EnterObject(ctx objectContext) {
-	//entering json special case
-	//if r.path.Len() == 1 {
-	//	r.buf.WriteByte('{')
-	//	return
-	//}
 	st := r.path.Back().Value.(*redactingListenerState)
 	nextAutomata := *st.nextAutomata
 	st.nextAutomata = nil
@@ -104,11 +99,6 @@ func (r *redactingListener) EnterObject(ctx objectContext) {
 }
 
 func (r *redactingListener) ExitObject(ctx objectContext) {
-	//exiting json special case
-	//if r.path.Len() == 1 {
-	//	r.buf.WriteByte('}')
-	//	return
-	//}
 	st := r.path.Back().Value.(*redactingListenerState)
 	r.path.Remove(r.path.Back())
 	if st.automata.isTerminal {
@@ -119,8 +109,6 @@ func (r *redactingListener) ExitObject(ctx objectContext) {
 }
 
 type redactingListenerState struct {
-	//parentAutomata  *node
-	//currentAutomata *node
 	automata     node
 	nextAutomata *node
 	skipMatching bool
@@ -142,50 +130,3 @@ func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int
 	}
 
 }
-
-//func (r Redactor) redactOld(json string, parentAutomata node, buf *lazyBuffer, offset int) {
-//	root := gjson.Parse(json)
-//	if root.IsArray() {
-//		_ = buf.WriteByte('[')
-//	} else {
-//		_ = buf.WriteByte('{')
-//	}
-//	var index int
-//	statesBuf := make([]*state, 0, 16)
-//	root.ForEach(func(key, value gjson.Result) bool {
-//		keyStr := key.Str
-//		if root.IsArray() {
-//			keyStr = strconv.Itoa(index)
-//		}
-//		if index != 0 {
-//			_ = buf.WriteByte(',')
-//		}
-//		index++
-//		_, _ = buf.WriteString(key.Raw)
-//		if !root.IsArray() {
-//			_ = buf.WriteByte(':')
-//		}
-//		next := parentAutomata.next(keyStr, statesBuf)
-//		if next.isTerminal {
-//			if buf.buf == nil {
-//				buf.buf = bytes.NewBuffer(make([]byte, 0, len(buf.originalJson)))
-//				_, _ = buf.WriteString(buf.originalJson[:offset+value.Index])
-//			}
-//			_ = buf.WriteByte('"')
-//			_, _ = buf.WriteString(r.handler(value.Raw))
-//			_ = buf.WriteByte('"')
-//			return true
-//		}
-//		if len(next.states) == 0 || (!value.IsObject() && !value.IsArray()) {
-//			_, _ = buf.WriteString(value.Raw)
-//			return true
-//		}
-//		r.redact(value.Raw, next, buf, offset+value.Index)
-//		return true
-//	})
-//	if root.IsArray() {
-//		_ = buf.WriteByte(']')
-//	} else {
-//		_ = buf.WriteByte('}')
-//	}
-//}
