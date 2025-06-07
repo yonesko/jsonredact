@@ -69,36 +69,36 @@ func TestRedact(t *testing.T) {
 			args: args{json: bigJson, keys: []string{"1age", "1fav.movie", "1friends", "1name.last"}},
 			want: bigJson,
 		},
-		//{
-		//	name: "base/plain path of 3 depth",
-		//	args: args{json: `{"a":{"b":{"c":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "c"}},
-		//	want: `{"a":{"b":{"c":"REDACTED"}},"b":1,"c":"REDACTED"}`,
-		//},
-		//{
-		//	name: "base/two paths with common prefix",
-		//	args: args{json: `{"a":{"b":{"c":1, "d":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d"}},
-		//	want: `{"a":{"b":{"c":"REDACTED", "d":"REDACTED"}},"b":1,"c":1}`,
-		//},
-		//{
-		//	name: "base/two paths with common prefix and different depth",
-		//	args: args{json: `{"a":{"b":{"c":1, "d":{"f":1} }},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d.e"}},
-		//	want: `{"a":{"b":{"c":"REDACTED", "d":{"f":1} }},"b":1,"c":1}`,
-		//},
-		//{
-		//	name: "base/do not override general by particular",
-		//	args: args{json: `{"a":{"b":1}}`, keys: []string{"a", "a.b"}},
-		//	want: `{"a":"REDACTED"}`,
-		//},
-		//{
-		//	name: "base/do not override general by particular, different order",
-		//	args: args{json: `{"a":{"b":1}}`, keys: []string{"a.b", "a"}},
-		//	want: `{"a":"REDACTED"}`,
-		//},
-		//{
-		//	name: "array/whole",
-		//	args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a"}},
-		//	want: `{"a":"REDACTED","b":2}`,
-		//},
+		{
+			name: "base/plain path of 3 depth",
+			args: args{json: `{"a":{"b":{"c":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "c"}},
+			want: `{"a":{"b":{"c":"REDACTED"}},"b":1,"c":"REDACTED"}`,
+		},
+		{
+			name: "base/two paths with common prefix",
+			args: args{json: `{"a":{"b":{"c":1, "d":1}},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d"}},
+			want: `{"a":{"b":{"c":"REDACTED", "d":"REDACTED"}},"b":1,"c":1}`,
+		},
+		{
+			name: "base/two paths with common prefix and different depth",
+			args: args{json: `{"a":{"b":{"c":1, "d":{"f":1} }},"b":1,"c":1}`, keys: []string{"a.b.c", "a.b.d.e"}},
+			want: `{"a":{"b":{"c":"REDACTED", "d":{"f":1} }},"b":1,"c":1}`,
+		},
+		{
+			name: "base/do not override general by particular",
+			args: args{json: `{"a":{"b":1}}`, keys: []string{"a", "a.b"}},
+			want: `{"a":"REDACTED"}`,
+		},
+		{
+			name: "base/do not override general by particular, different order",
+			args: args{json: `{"a":{"b":1}}`, keys: []string{"a.b", "a"}},
+			want: `{"a":"REDACTED"}`,
+		},
+		{
+			name: "array/whole",
+			args: args{json: `{"a":[1,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a"}},
+			want: `{"a":"REDACTED","b":2}`,
+		},
 		//{
 		//	name: "array/with index",
 		//	args: args{json: `{"a":[18,2,{"c":1,"d":{"e":2}}],"b":2}`, keys: []string{"a.1"}},
