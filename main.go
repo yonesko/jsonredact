@@ -5,7 +5,7 @@ import (
 )
 
 type Redactor struct {
-	automata node
+	automata *node
 	handler  func(string) string
 }
 
@@ -73,7 +73,7 @@ func (r *redactingListener) ExitMemberKey(ctx memberContext) {
 	st := r.path[len(r.path)-1]
 
 	next := st.automata.next(ctx.key[1:len(ctx.key)-1], r.statesBuf)
-	st.nextAutomata = &next
+	st.nextAutomata = next
 
 	if next.isTerminal && r.buf.buf == nil {
 		r.buf.buf = bytes.NewBuffer(make([]byte, 0, len(r.buf.originalJson)))
@@ -136,9 +136,9 @@ type redactingListenerState struct {
 	skipMatching bool
 }
 
-func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int) {
+func (r Redactor) redact(json string, automata *node, buf *lazyBuffer, offset int) {
 	path := make([]*redactingListenerState, 0, 20)
-	path = append(path, &redactingListenerState{nextAutomata: &automata})
+	path = append(path, &redactingListenerState{nextAutomata: automata})
 	l := &redactingListener{
 		buf:       buf,
 		statesBuf: make([]*state, 0, 16),
