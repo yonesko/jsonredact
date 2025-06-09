@@ -18,15 +18,15 @@ type state struct {
 	transitions map[string]*state
 }
 
-func newNode() *node {
-	return &node{}
+func newNode() node {
+	return node{}
 }
 
 func newState() *state {
 	return &state{transitions: map[string]*state{}}
 }
 
-func newNDFA(expressions ...string) *node {
+func newNDFA(expressions ...string) node {
 	if len(expressions) == 0 {
 		return newNode()
 	}
@@ -36,10 +36,10 @@ func newNDFA(expressions ...string) *node {
 		states = append(states, build(expression(expressions[i]).splitByPoint()))
 	}
 
-	return &node{states: states}
+	return node{states: states}
 }
 
-func (n *node) next(input string, buf []*state) *node {
+func (n node) next(input string, buf []*state) node {
 	buf = buf[:0]
 	var isTerminal bool
 	for _, s := range n.states {
@@ -60,7 +60,7 @@ func (n *node) next(input string, buf []*state) *node {
 	if n.isTerminal == isTerminal && len(buf) == 1 && len(n.states) == 1 && buf[0] == n.states[0] {
 		return n
 	}
-	return &node{states: buf, isTerminal: isTerminal}
+	return node{states: buf, isTerminal: isTerminal}
 }
 
 func (s *state) nextByKey(input string) *state {
