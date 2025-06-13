@@ -1,3 +1,5 @@
+![img.png](img.png)
+
 ### JSONRedact redacts sensitive fields from JSON
 
 * Production tested
