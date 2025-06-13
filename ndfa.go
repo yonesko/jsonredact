@@ -28,14 +28,22 @@ func newState() *state {
 	return &state{transitions: map[string]*state{}}
 }
 
-func newNDFA(handler func(string) string, expressions ...string) node {
-	if len(expressions) == 0 {
+type replacerPair struct {
+	expressions []string
+	handler     func(string) string
+}
+
+func newNDFA(pairs ...replacerPair) node {
+	if len(pairs) == 0 {
 		return newNode()
 	}
-	states := make([]*state, 0, len(expressions))
+	states := make([]*state, 0, len(pairs))
 
-	for i := 0; i < len(expressions); i++ {
-		states = append(states, build(handler, expression(expressions[i]).splitByPoint()))
+	for i := 0; i < len(pairs); i++ {
+		pair := pairs[i]
+		for j := 0; j < len(pair.expressions); j++ {
+			states = append(states, build(pair.handler, expression(pair.expressions[j]).splitByPoint()))
+		}
 	}
 
 	return node{states: states}
