@@ -11,11 +11,13 @@ import (
 type node struct {
 	states     []*state
 	isTerminal bool
+	handler    func(string) string
 }
 
 type state struct {
 	isTerminal  bool
 	transitions map[string]*state
+	handler     func(string) string
 }
 
 func newNode() node {
@@ -26,14 +28,14 @@ func newState() *state {
 	return &state{transitions: map[string]*state{}}
 }
 
-func newNDFA(expressions ...string) node {
+func newNDFA(handler func(string) string, expressions ...string) node {
 	if len(expressions) == 0 {
 		return newNode()
 	}
 	states := make([]*state, 0, len(expressions))
 
 	for i := 0; i < len(expressions); i++ {
-		states = append(states, build(expression(expressions[i]).splitByPoint()))
+		states = append(states, build(handler, expression(expressions[i]).splitByPoint()))
 	}
 
 	return node{states: states}
@@ -42,6 +44,7 @@ func newNDFA(expressions ...string) node {
 func (n node) next(input string, buf []*state) node {
 	buf = buf[:0]
 	var isTerminal bool
+	var handler func(string) string
 	for _, s := range n.states {
 		nextState, nextState2 := s.next(input)
 		if nextState != nil {
@@ -49,18 +52,20 @@ func (n node) next(input string, buf []*state) node {
 			if nextState.isTerminal {
 				isTerminal = true
 			}
+			handler = nextState.handler
 		}
 		if nextState2 != nil {
 			buf = append(buf, nextState2)
 			if nextState2.isTerminal {
 				isTerminal = true
 			}
+			handler = nextState2.handler
 		}
 	}
 	if n.isTerminal == isTerminal && len(buf) == 1 && len(n.states) == 1 && buf[0] == n.states[0] {
 		return n
 	}
-	return node{states: buf, isTerminal: isTerminal}
+	return node{handler: handler, states: buf, isTerminal: isTerminal}
 }
 
 func (s *state) nextByKey(input string) *state {
@@ -77,17 +82,18 @@ func (s *state) next(input string) (*state, *state) {
 	return s.nextByKey(input), s.transitions["#"]
 }
 
-func build(expressions []string) *state {
+func build(handler func(string) string, expressions []string) *state {
 	if len(expressions) == 0 {
-		return &state{isTerminal: true}
+		return &state{isTerminal: true, handler: handler}
 	}
 	a := newState()
+	a.handler = handler
 	if expressions[0] == "*" {
 		a.transitions["#"] = a
-		a.transitions[expressions[1]] = build(expressions[2:])
+		a.transitions[expressions[1]] = build(handler, expressions[2:])
 		return a
 	}
-	a.transitions[expressions[0]] = build(expressions[1:])
+	a.transitions[expressions[0]] = build(handler, expressions[1:])
 	return a
 }
 

@@ -8,7 +8,6 @@ import (
 
 type Redactor struct {
 	automata node
-	handler  func(string) string
 }
 
 /*
@@ -18,7 +17,7 @@ Use '*' to apply right expression to all object keys recursively. (makes redacto
 User '\' to escape control symbols above.
 */
 func NewRedactor(expressions []string, handler func(string) string) Redactor {
-	return Redactor{handler: handler, automata: newNDFA(expressions...)}
+	return Redactor{automata: newNDFA(handler, expressions...)}
 }
 
 func (r Redactor) Redact(json string) string {
@@ -85,7 +84,7 @@ func (r Redactor) redact(json string, automata node, buf *lazyBuffer, offset int
 				_, _ = buf.WriteString(buf.originalJson[:offset+value.Index])
 			}
 			_ = buf.WriteByte('"')
-			_, _ = buf.WriteString(r.handler(value.Raw))
+			_, _ = buf.WriteString(next.handler(value.Raw))
 			_ = buf.WriteByte('"')
 			return true
 		}

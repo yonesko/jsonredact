@@ -3,7 +3,6 @@ package jsonredact
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -236,7 +235,7 @@ func TestRedact(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
-			fmt.Println(redactor.automata)
+			//fmt.Println(redactor.automata)
 			if indentIfJSONString(tt.want) != indentIfJSONString(redactor.Redact(tt.args.json)) {
 				t.Fail()
 			}
