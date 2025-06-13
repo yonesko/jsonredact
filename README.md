@@ -38,14 +38,14 @@ function func main() {
 
 ### Expressions
 
-User `.` as separator of objects and arrays.
+Use `.` as separator of objects and arrays.
 
 Use `#` as wildcard for any key or array index.
 
 Use `*` to apply right expression to all object keys found under path of left expression recursively. (makes redactor
 walk the whole json)
 
-User `\` to escape control symbols above.
+Use `\` to escape control symbols above.
 
 | Expression | Comment                                                                                  |
 |------------|------------------------------------------------------------------------------------------|
