@@ -3,7 +3,6 @@ package jsonredact
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -236,7 +235,68 @@ func TestRedact(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			redactor := NewRedactor(tt.args.keys, handler)
-			fmt.Println(redactor.automata)
+			//fmt.Println(redactor.automata)
+			if indentIfJSONString(tt.want) != indentIfJSONString(redactor.Redact(tt.args.json)) {
+				t.Fail()
+			}
+		})
+	}
+}
+
+func Test_Builder(t *testing.T) {
+	X := func(s string) string {
+		return "X"
+	}
+	Y := func(s string) string {
+		return "Y"
+	}
+
+	type args struct {
+		json  string
+		pairs []replacerPair
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "empty - just return",
+			args: args{
+				json: `{"a":5, "b":7}`,
+			},
+			want: `{"a":5, "b":7}`,
+		},
+		{
+			name: "regular, no expression ambiguity",
+			args: args{
+				json: `{"a":5, "b":7, "Z":[6,{}]}`,
+				pairs: []replacerPair{
+					{handler: X, expressions: []string{"a", "aa"}},
+					{handler: Y, expressions: []string{"b", "bb"}},
+				},
+			},
+			want: `{"a":"X", "b":"Y", "Z":[6,{}]}`,
+		},
+		{
+			name: "last one overrides",
+			args: args{
+				json: `{"a":5, "b":7, "Z":[6,{}]}`,
+				pairs: []replacerPair{
+					{handler: X, expressions: []string{"a", "aa"}},
+					{handler: Y, expressions: []string{"b", "a"}},
+				},
+			},
+			want: `{"a":"Y", "b":"Y", "Z":[6,{}]}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			redactor := NewEmptyRedactor()
+			for _, p := range tt.args.pairs {
+				redactor = redactor.And(p.expressions, p.handler)
+			}
+			//fmt.Println(redactor.automata)
 			if indentIfJSONString(tt.want) != indentIfJSONString(redactor.Redact(tt.args.json)) {
 				t.Fail()
 			}
