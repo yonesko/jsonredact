@@ -1,6 +1,6 @@
 module github.com/yonesko/jsonredact
 
-go 1.22.0
+go 1.24.3
 
 require github.com/tidwall/gjson v1.17.1
 

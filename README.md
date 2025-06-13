@@ -1,3 +1,4 @@
+![Build Status](https://github.com/yonesko/jsonredact/actions/workflows/go.yml/badge.svg)
 ![img.png](img.png)
 
 ### JSONRedact redacts sensitive fields from JSON
