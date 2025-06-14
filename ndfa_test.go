@@ -191,10 +191,10 @@ func Test_newNDFA(t *testing.T) {
 				rand.Shuffle(len(tt.expressions), func(i, j int) {
 					tt.expressions[i], tt.expressions[j] = tt.expressions[j], tt.expressions[i]
 				})
-				a := newNDFA(tt.expressions...)
+				a := newNDFA(replacerPair{handler: handler, expressions: tt.expressions})
 				once.Do(func() {
-					fmt.Println(tt.expressions)
-					fmt.Println(&a)
+					//fmt.Println(tt.expressions)
+					//fmt.Println(&a)
 				})
 				for _, input := range tt.accepted {
 					if !accepts(a, input) {
@@ -253,7 +253,7 @@ func TestRandom(t *testing.T) {
 	for i := 0; i < 1e3; i++ {
 		expressions := generateExpressions()
 		regex := buildRegex(expressions)
-		ndfa := newNDFA(expressions...)
+		ndfa := newNDFA(replacerPair{handler: handler, expressions: expressions})
 		for j := 0; j < 10e3; j++ {
 			input := generateInput()
 			expected := regex.MatchString(input)
