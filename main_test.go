@@ -289,6 +289,28 @@ func Test_Builder(t *testing.T) {
 			},
 			want: `{"a":"Y", "b":"Y", "Z":[6,{}]}`,
 		},
+		{
+			name: "specific one overrides",
+			args: args{
+				json: `{"a":5, "b":7, "Z":[6,{}]}`,
+				pairs: []replacerPair{
+					{handler: X, expressions: []string{"#"}},
+					{handler: Y, expressions: []string{"a"}},
+				},
+			},
+			want: `{"a":"Y", "b":"X", "Z":"X"}`,
+		},
+		{
+			name: "specific one overrides",
+			args: args{
+				json: `{"a":5, "b":7, "Z":[6,{"a":88}]}`,
+				pairs: []replacerPair{
+					{handler: X, expressions: []string{"*.a"}},
+					{handler: Y, expressions: []string{"a"}},
+				},
+			},
+			want: `{"a":"Y", "b":7, "Z":[6,{"a":"X"}]}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -297,8 +319,9 @@ func Test_Builder(t *testing.T) {
 				redactor = redactor.And(p.expressions, p.handler)
 			}
 			//fmt.Println(redactor.automata)
-			if indentIfJSONString(tt.want) != indentIfJSONString(redactor.Redact(tt.args.json)) {
-				t.Fail()
+			actual := redactor.Redact(tt.args.json)
+			if indentIfJSONString(tt.want) != indentIfJSONString(actual) {
+				t.Fatal("actual:", actual, "expected:", tt.want)
 			}
 		})
 	}
